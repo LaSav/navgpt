@@ -88,18 +88,43 @@
   margin-left: auto;
 }
 
-/* Highlight applied to the target message in the page */
-.highlight-pulse {
-  animation: pulse 1600ms ease-out 1;
-  outline: 3px solid #8ab4f8;
-  outline-offset: 2px;
-  border-radius: 8px;
+/* layout bits used above */
+.item .row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
 }
-@keyframes pulse {
-  0% {
-    background: rgba(138, 180, 248, 0.22);
-  }
-  100% {
-    background: transparent;
-  }
+
+.item .text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+
+  -webkit-line-clamp: 3; /* change to 2 or 4 as desired */
+  line-clamp: 3; /* <-- future standard syntax */
+
+  overflow: hidden;
+  white-space: normal;
+}
+
+/* purple accent for edited prompts */
+.item--edited {
+  border-left: 3px solid rebeccapurple;
+  padding-left: calc(0.6rem - 3px);
+}
+
+/* small rounded badge for edit count */
+.badge {
+  display: inline-block;
+  min-width: 1.25rem;
+  padding: 0.05rem 0.35rem;
+  font-size: 11px;
+  line-height: 1.1;
+  text-align: center;
+  border-radius: 999px;
+}
+.badge--edits {
+  background: rebeccapurple;
+  color: white;
+  font-weight: 600;
 }

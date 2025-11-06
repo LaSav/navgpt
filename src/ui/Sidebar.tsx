@@ -19,6 +19,7 @@ export default function Sidebar({ items, onJump }: Props) {
       <div class='header'>
         <div class='title'>Prompt history</div>
       </div>
+
       <div style={{ padding: '.5rem .6rem' }}>
         <input
           class='search'
@@ -27,19 +28,35 @@ export default function Sidebar({ items, onJump }: Props) {
           onInput={(e: any) => setQ(e.currentTarget.value)}
         />
       </div>
+
       <div class='list'>
         {filtered.length === 0 && (
           <div style={{ opacity: 0.7, padding: '.6rem' }}>
             No prompts found yet.
           </div>
         )}
+
         {filtered.map((p, idx) => (
-          <button class='item' onClick={() => onJump(p.id)}>
-            <div class='meta'>#{idx + 1}</div>
-            <div>{p.text}</div>
+          <button
+            class={`item ${p.edits > 0 ? 'item--edited' : ''}`}
+            onClick={() => onJump(p.id)}
+            title={
+              p.edits > 0
+                ? `Edited ${p.edits} time${p.edits > 1 ? 's' : ''} (v${
+                    p.currentVersion
+                  }/${p.totalVersions})`
+                : undefined
+            }
+          >
+            <div class='row'>
+              <div class='meta'>#{idx + 1}</div>
+              {p.edits > 0 && <span class='badge badge--edits'>{p.edits}</span>}
+            </div>
+            <div class='text'>{p.text}</div>
           </button>
         ))}
       </div>
+
       <div class='footer'>
         <span class='meta'>
           {items.length} prompt{items.length === 1 ? '' : 's'}
