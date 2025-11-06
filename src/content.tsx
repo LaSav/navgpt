@@ -15,22 +15,18 @@ async function loadStyles(shadow: ShadowRoot) {
 
 // Mount a shadow-root sidebar so we don't collide with site styles.
 function mountSidebar() {
-  // Don’t double-inject
   if (document.getElementById('prompt-sidebar-root')) return null
-
   const host = document.createElement('div')
   host.id = 'prompt-sidebar-root'
   host.style.all = 'initial'
   document.documentElement.appendChild(host)
-
   const shadow = host.attachShadow({ mode: 'open' })
-
   const mount = document.createElement('div')
   shadow.appendChild(mount)
-
   return { shadow, mount }
 }
 
+// Find the actual scroll container (inner overflow div)
 function getScrollParent(node: HTMLElement): HTMLElement {
   for (
     let p = node.parentElement as HTMLElement | null;
@@ -40,51 +36,40 @@ function getScrollParent(node: HTMLElement): HTMLElement {
     const s = getComputedStyle(p)
     if (/(auto|scroll)/.test(s.overflow + s.overflowY + s.overflowX)) return p
   }
-  // Fallback to the page, but your case uses an inner scroller:
   return (document.scrollingElement as HTMLElement) || document.documentElement
 }
 
+// Header offset inside the scroller
 function getStickyOffsetWithin(scroller: HTMLElement): number {
-  // Try CSS var used by ChatGPT layout, e.g. --header-height
   const cs = getComputedStyle(scroller)
   const varVal = cs.getPropertyValue('--header-height').trim()
   const fromVar = varVal ? parseFloat(varVal) : 0
-
   if (fromVar) return fromVar
-
-  // Fallback: measure a known top bar inside the scroller if present
   const header = scroller.querySelector<HTMLElement>(
     'header, nav, [data-testid="top-bar"]'
   )
   return header ? header.getBoundingClientRect().height : 0
 }
 
+// SNAP (no animation). Aim at bubble when possible, article during edit (provided by scrapePrompts)
 function snapToPrompt(el: HTMLElement) {
   const scroller = getScrollParent(el)
-  const offset = getStickyOffsetWithin(scroller) + 16 // breathing room
-
-  // Position of el relative to scroller’s content box
-  const elRect = el.getBoundingClientRect()
-  const scRect = scroller.getBoundingClientRect()
-  const targetTop = scroller.scrollTop + (elRect.top - scRect.top) - offset
-
-  // Single, instantaneous jump (no animation)
-  scroller.scrollTop = targetTop
-
-  // Optional: one-frame re-measure to correct tiny residual error
-  // (still instant—no visible animation)
+  const offset = getStickyOffsetWithin(scroller) + 16
+  const e = el.getBoundingClientRect()
+  const s = scroller.getBoundingClientRect()
+  const target = scroller.scrollTop + (e.top - s.top) - offset
+  scroller.scrollTop = target
+  // tiny correction next frame (remains instantaneous visually)
   requestAnimationFrame(() => {
     const e2 = el.getBoundingClientRect()
     const s2 = scroller.getBoundingClientRect()
     const residual = e2.top - s2.top - offset
-    if (Math.abs(residual) > 1) {
-      scroller.scrollTop = scroller.scrollTop + residual
-    }
+    if (Math.abs(residual) > 1) scroller.scrollTop += residual
   })
 }
 
 function highlightAndScrollTo(el: HTMLElement) {
-  snapToPrompt(el) // your snap function
+  snapToPrompt(el)
   el.classList.add('__prompt-highlight')
   setTimeout(() => el.classList.remove('__prompt-highlight'), 1700)
 }
@@ -94,6 +79,8 @@ async function main() {
   if (!root) return
 
   await loadStyles(root.shadow)
+
+  // Global CSS (applies to page DOM, e.g., highlight pulse)
   setGlobalStyles(
     'highlight',
     `
@@ -135,22 +122,21 @@ async function main() {
     }
   })
 
-  // Render initial UI
+  // Initial render
   render(<Sidebar items={items} onJump={onJump} />, root.mount)
 
-  // Observe DOM mutations and refresh list
+  // Observe & re-render
   const stop = observePrompts((next) => {
     items = next
     render(<Sidebar items={items} onJump={onJump} />, root.mount)
   })
 
-  // Optional: anchor the panel against main chat container (not strictly needed since fixed)
+  // Make space for panel
   const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR)
   if (chatRoot instanceof HTMLElement) {
-    chatRoot.style.paddingRight = '330px' // make space for the panel
+    chatRoot.style.paddingRight = '330px'
   }
 
-  // Cleanup on navigation (SPA-style route changes)
   window.addEventListener('unload', () => stop())
 }
 

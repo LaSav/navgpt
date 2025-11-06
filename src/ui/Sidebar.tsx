@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'preact/hooks'
+import { useMemo, useState } from 'preact/hooks'
 import type { PromptItem } from '../dom/scrape'
 
 type Props = {
@@ -38,7 +38,9 @@ export default function Sidebar({ items, onJump }: Props) {
 
         {filtered.map((p, idx) => (
           <button
-            class={`item ${p.edits > 0 ? 'item--edited' : ''}`}
+            class={`item ${p.edits > 0 ? 'item--edited' : ''} ${
+              p.isEditing ? 'item--editing' : ''
+            }`}
             onClick={() => onJump(p.id)}
             title={
               p.edits > 0
@@ -50,7 +52,12 @@ export default function Sidebar({ items, onJump }: Props) {
           >
             <div class='row'>
               <div class='meta'>#{idx + 1}</div>
-              {p.edits > 0 && <span class='badge badge--edits'>{p.edits}</span>}
+              {p.edits > 0 && (
+                <span class='badge badge--edits'>
+                  {p.currentVersion} / {p.totalVersions}
+                </span>
+              )}
+              {p.isEditing && <span class='badge badge--editing'>editing</span>}
             </div>
             <div class='text'>{p.text}</div>
           </button>
