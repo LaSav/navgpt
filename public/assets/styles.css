@@ -84,7 +84,11 @@
   white-space: normal;
 }
 
-/* Edited & editing states */
+/* Active/edited/editing states */
+.item--active {
+  background: color-mix(in oklab, CanvasText 14%, transparent);
+  outline: 2px solid color-mix(in oklab, Highlight 60%, CanvasText 40%);
+}
 .item--edited {
   border-left: 3px solid rebeccapurple;
   padding-left: calc(0.6rem - 3px);

@@ -4,9 +4,10 @@ import type { PromptItem } from '../dom/scrape'
 type Props = {
   items: PromptItem[]
   onJump: (id: string) => void
+  activeId?: string
 }
 
-export default function Sidebar({ items, onJump }: Props) {
+export default function Sidebar({ items, onJump, activeId }: Props) {
   const [q, setQ] = useState('')
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -38,9 +39,10 @@ export default function Sidebar({ items, onJump }: Props) {
 
         {filtered.map((p, idx) => (
           <button
+            data-prompt-id={p.id}
             class={`item ${p.edits > 0 ? 'item--edited' : ''} ${
               p.isEditing ? 'item--editing' : ''
-            }`}
+            } ${activeId === p.id ? 'item--active' : ''}`}
             onClick={() => onJump(p.id)}
             title={
               p.edits > 0

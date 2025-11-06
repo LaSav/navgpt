@@ -4,7 +4,7 @@ import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { CHAT_ROOT_SELECTOR } from './dom/selectors'
 import { setGlobalStyles } from './ui/globalStyles'
 
-// Load CSS from /public/assets/styles.css into the shadow root
+// Load CSS into the shadow root
 async function loadStyles(shadow: ShadowRoot) {
   const url = chrome.runtime.getURL('assets/styles.css')
   const css = await fetch(url).then((r) => r.text())
@@ -13,7 +13,7 @@ async function loadStyles(shadow: ShadowRoot) {
   shadow.appendChild(style)
 }
 
-// Mount a shadow-root sidebar so we don't collide with site styles.
+// Shadow root mount
 function mountSidebar() {
   if (document.getElementById('prompt-sidebar-root')) return null
   const host = document.createElement('div')
@@ -26,7 +26,7 @@ function mountSidebar() {
   return { shadow, mount }
 }
 
-// Find the actual scroll container (inner overflow div)
+// Find real scroller
 function getScrollParent(node: HTMLElement): HTMLElement {
   for (
     let p = node.parentElement as HTMLElement | null;
@@ -39,7 +39,6 @@ function getScrollParent(node: HTMLElement): HTMLElement {
   return (document.scrollingElement as HTMLElement) || document.documentElement
 }
 
-// Header offset inside the scroller
 function getStickyOffsetWithin(scroller: HTMLElement): number {
   const cs = getComputedStyle(scroller)
   const varVal = cs.getPropertyValue('--header-height').trim()
@@ -51,7 +50,7 @@ function getStickyOffsetWithin(scroller: HTMLElement): number {
   return header ? header.getBoundingClientRect().height : 0
 }
 
-// SNAP (no animation). Aim at bubble when possible, article during edit (provided by scrapePrompts)
+// Snap-to-target (no animation, with tiny correction)
 function snapToPrompt(el: HTMLElement) {
   const scroller = getScrollParent(el)
   const offset = getStickyOffsetWithin(scroller) + 16
@@ -59,7 +58,6 @@ function snapToPrompt(el: HTMLElement) {
   const s = scroller.getBoundingClientRect()
   const target = scroller.scrollTop + (e.top - s.top) - offset
   scroller.scrollTop = target
-  // tiny correction next frame (remains instantaneous visually)
   requestAnimationFrame(() => {
     const e2 = el.getBoundingClientRect()
     const s2 = scroller.getBoundingClientRect()
@@ -74,13 +72,102 @@ function highlightAndScrollTo(el: HTMLElement) {
   setTimeout(() => el.classList.remove('__prompt-highlight'), 1700)
 }
 
+// Keep active sidebar item visible
+function scrollSidebarActiveIntoView(
+  shadowMount: HTMLElement,
+  activeId?: string
+) {
+  if (!activeId) return
+  const list = shadowMount.querySelector('.list') as HTMLElement | null
+  const btn = shadowMount.querySelector<HTMLElement>(
+    `.item[data-prompt-id="${CSS.escape(activeId)}"]`
+  )
+  if (!list || !btn) return
+  const b = btn.getBoundingClientRect()
+  const l = list.getBoundingClientRect()
+  const isAbove = b.top < l.top + 8
+  const isBelow = b.bottom > l.bottom - 8
+  if (isAbove || isBelow) {
+    btn.scrollIntoView({
+      block: isAbove ? 'start' : 'end',
+      inline: 'nearest',
+      behavior: 'auto',
+    })
+  }
+}
+
+/** IntersectionObserver-based active tracker */
+function makeActiveTracker(
+  getItems: () => PromptItem[],
+  getScroller: () => HTMLElement | null,
+  onActive: (id?: string) => void
+) {
+  let io: IntersectionObserver | null = null
+
+  function refreshObserver() {
+    io?.disconnect()
+    const scroller = getScroller()
+    if (!scroller) return
+
+    const offset = getStickyOffsetWithin(scroller) + 16
+
+    io = new IntersectionObserver(
+      (entries) => {
+        const items = getItems()
+        const sRect = scroller.getBoundingClientRect()
+        const anchorY = sRect.top + offset
+
+        // Filter to intersecting targets and compute top distances
+        let bestId: string | undefined
+        let bestScore = Number.POSITIVE_INFINITY
+
+        for (const e of entries) {
+          if (!e.isIntersecting) continue
+          const el = e.target as HTMLElement
+          const item = items.find((it) => it.el === el)
+          if (!item) continue
+          const rTop = el.getBoundingClientRect().top
+          const dy = rTop - anchorY
+          const score = Math.abs(dy) + (dy < 0 ? 8 : 0) // light bias to items below anchor
+          if (score < bestScore) {
+            bestScore = score
+            bestId = item.id
+          }
+        }
+
+        if (bestId) onActive(bestId)
+      },
+      {
+        root: scroller,
+        rootMargin: '0px',
+        threshold: [0, 0.01, 0.1, 0.5, 1],
+      }
+    )
+
+    // (Re)observe current items
+    for (const it of getItems()) {
+      if (it.el?.isConnected) io.observe(it.el)
+    }
+  }
+
+  function onItemsChanged() {
+    refreshObserver()
+  }
+
+  function disconnect() {
+    io?.disconnect()
+  }
+
+  return { refreshObserver, onItemsChanged, disconnect }
+}
+
 async function main() {
   const root = mountSidebar()
   if (!root) return
 
   await loadStyles(root.shadow)
 
-  // Global CSS (applies to page DOM, e.g., highlight pulse)
+  // Global highlight CSS for page elements
   setGlobalStyles(
     'highlight',
     `
@@ -98,49 +185,72 @@ async function main() {
   )
 
   let items: PromptItem[] = scrapePrompts()
+  let scroller: HTMLElement | null = items[0]?.el
+    ? getScrollParent(items[0].el)
+    : null
+  let activeId: string | undefined
 
   const onJump = (id: string) => {
     const target = items.find((i) => i.id === id)?.el
-    if (target) highlightAndScrollTo(target)
+    if (target) {
+      highlightAndScrollTo(target)
+      activeId = id
+      render(
+        <Sidebar items={items} onJump={onJump} activeId={activeId} />,
+        root.mount
+      )
+      scrollSidebarActiveIntoView(root.mount, activeId)
+    }
   }
 
-  // Keyboard toggle (Alt+P)
-  document.addEventListener('keydown', (e) => {
-    if (
-      (e.altKey || e.metaKey) &&
-      !e.shiftKey &&
-      !e.ctrlKey &&
-      e.key.toLowerCase() === 'p'
-    ) {
-      const container = root.mount.querySelector(
-        '.container'
-      ) as HTMLElement | null
-      if (container) {
-        container.style.display =
-          container.style.display === 'none' ? 'flex' : 'none'
+  // IO-based active tracker
+  const tracker = makeActiveTracker(
+    () => items,
+    () => scroller,
+    (id) => {
+      if (id && id !== activeId) {
+        activeId = id
+        render(
+          <Sidebar items={items} onJump={onJump} activeId={activeId} />,
+          root.mount
+        )
+        scrollSidebarActiveIntoView(root.mount, activeId)
       }
     }
-  })
+  )
+  tracker.refreshObserver()
 
   // Initial render
-  render(<Sidebar items={items} onJump={onJump} />, root.mount)
+  render(
+    <Sidebar items={items} onJump={onJump} activeId={activeId} />,
+    root.mount
+  )
 
-  // Observe & re-render
+  // React to DOM changes
   const stop = observePrompts((next) => {
     items = next
-    render(<Sidebar items={items} onJump={onJump} />, root.mount)
+    scroller = items[0]?.el ? getScrollParent(items[0].el) : scroller
+    render(
+      <Sidebar items={items} onJump={onJump} activeId={activeId} />,
+      root.mount
+    )
+    tracker.onItemsChanged()
+
+    // After paint, re-evaluate once (helps after big layout changes)
+    requestAnimationFrame(() => tracker.onItemsChanged())
   })
 
   // Make space for panel
   const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR)
-  if (chatRoot instanceof HTMLElement) {
-    chatRoot.style.paddingRight = '330px'
-  }
+  if (chatRoot instanceof HTMLElement) chatRoot.style.paddingRight = '330px'
 
-  window.addEventListener('unload', () => stop())
+  // Cleanup
+  window.addEventListener('unload', () => {
+    tracker.disconnect()
+    stop()
+  })
 }
 
-// Run when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', main)
 } else {
