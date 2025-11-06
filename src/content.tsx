@@ -2,6 +2,7 @@ import { render } from 'preact'
 import Sidebar from './ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { CHAT_ROOT_SELECTOR } from './dom/selectors'
+import { setGlobalStyles } from './ui/globalStyles'
 
 // Load CSS from /public/assets/styles.css into the shadow root
 async function loadStyles(shadow: ShadowRoot) {
@@ -83,9 +84,9 @@ function snapToPrompt(el: HTMLElement) {
 }
 
 function highlightAndScrollTo(el: HTMLElement) {
-  snapToPrompt(el)
-  el.classList.add('highlight-pulse')
-  setTimeout(() => el.classList.remove('highlight-pulse'), 1700)
+  snapToPrompt(el) // your snap function
+  el.classList.add('__prompt-highlight')
+  setTimeout(() => el.classList.remove('__prompt-highlight'), 1700)
 }
 
 async function main() {
@@ -93,6 +94,21 @@ async function main() {
   if (!root) return
 
   await loadStyles(root.shadow)
+  setGlobalStyles(
+    'highlight',
+    `
+    @keyframes promptPulse {
+      0%   { background: rgba(138,180,248,.22); }
+      100% { background: transparent; }
+    }
+    .__prompt-highlight {
+      animation: promptPulse 1600ms ease-out 1;
+      outline: 3px solid #8ab4f8;
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
+  `
+  )
 
   let items: PromptItem[] = scrapePrompts()
 
