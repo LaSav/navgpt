@@ -24,7 +24,7 @@ export default function Sidebar({ items, onJump, activeId }: Props) {
       <div style={{ padding: '.5rem .6rem' }}>
         <input
           class='search'
-          placeholder='Filter prompts…'
+          placeholder='Search prompts…'
           value={q}
           onInput={(e: any) => setQ(e.currentTarget.value)}
         />

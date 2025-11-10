@@ -1,13 +1,75 @@
+/* ----------------------------------------
+   BASE THEME TOKENS (LIGHT DEFAULT)
+---------------------------------------- */
+:host {
+  --bg-primary: #ffffff;
+  --text-primary: #111111;
+
+  --bg-secondary: #f4f4f5;
+  --text-secondary: #3a3a3a;
+
+  --accent: #7c3aed;
+
+  --border-color: color-mix(in oklab, var(--text-primary) 18%, transparent);
+  --divider-color: color-mix(in oklab, var(--text-primary) 16%, transparent);
+  --hover-bg: color-mix(in oklab, var(--text-primary) 10%, transparent);
+  --active-bg: color-mix(in oklab, var(--text-primary) 14%, transparent);
+  --editing-bg: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  --focus-ring: color-mix(in oklab, var(--accent) 65%, var(--text-primary) 35%);
+
+  --shadow-rgb: 0, 0, 0;
+  --elevation-mix: 6%;
+}
+
+/* ----------------------------------------
+   DARK THEME OVERRIDES (via attachThemeSync)
+---------------------------------------- */
+:host([data-theme='dark']) {
+  --bg-primary: #212121; /* bg-primary */
+  --text-primary: #ffffff; /* text-primary */
+
+  --bg-secondary: #303030; /* bg-secondary */
+  --text-secondary: #f3f3f3; /* text-secondary */
+
+  --accent: #a855f7;
+
+  --border-color: color-mix(in oklab, var(--text-primary) 20%, transparent);
+  --divider-color: color-mix(in oklab, var(--text-primary) 16%, transparent);
+  --hover-bg: color-mix(in oklab, var(--text-primary) 10%, transparent);
+  --active-bg: color-mix(in oklab, var(--text-primary) 14%, transparent);
+  --editing-bg: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  --focus-ring: color-mix(in oklab, var(--accent) 60%, var(--text-primary) 40%);
+
+  --shadow-rgb: 0, 0, 0;
+  --elevation-mix: 8%;
+}
+
+/* Optional — ensures correct theme even before JS loads */
+:host-context([data-theme='dark']) {
+  --bg-primary: #212121;
+  --text-primary: #ffffff;
+  --bg-secondary: #303030;
+  --text-secondary: #f3f3f3;
+}
+
+/* ----------------------------------------
+   BASE RESETS
+---------------------------------------- */
+
 :host {
   all: initial;
 }
+
 :host,
 .container {
   font: 13px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
     Noto Sans, Arial;
-  color: CanvasText;
+  color: var(--text-primary);
 }
 
+/* ----------------------------------------
+   LAYOUT PANEL
+---------------------------------------- */
 .container {
   width: 320px;
   height: 100vh;
@@ -17,9 +79,14 @@
   z-index: 2147483647;
   display: flex;
   flex-direction: column;
-  background: color-mix(in oklab, Canvas 90%, black 5%);
-  border-left: 1px solid color-mix(in oklab, CanvasText 20%, transparent);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.1);
+
+  background: color-mix(
+    in oklab,
+    var(--bg-primary) calc(100% - var(--elevation-mix)),
+    black var(--elevation-mix)
+  );
+  border-left: 1px solid var(--border-color);
+  box-shadow: -8px 0 24px rgba(var(--shadow-rgb), 0.12);
 }
 
 .header {
@@ -27,8 +94,9 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid color-mix(in oklab, CanvasText 16%, transparent);
+  border-bottom: 1px solid var(--divider-color);
 }
+
 .title {
   font-weight: 600;
   flex: 1;
@@ -38,13 +106,17 @@
 }
 
 .search {
-  width: 100%;
+  width: 90%;
   padding: 0.45rem 0.6rem;
   border-radius: 0.6rem;
-  border: 1px solid color-mix(in oklab, CanvasText 20%, transparent);
-  background: Canvas;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
+/* ----------------------------------------
+   LIST + ITEMS
+---------------------------------------- */
 .list {
   overflow: auto;
   padding: 0.4rem;
@@ -52,6 +124,7 @@
   flex-direction: column;
   gap: 0.25rem;
 }
+
 .item {
   appearance: none;
   border: 0;
@@ -61,20 +134,18 @@
   border-radius: 0.55rem;
   cursor: pointer;
   outline: 2px solid transparent;
-}
-.item:hover {
-  background: color-mix(in oklab, CanvasText 10%, transparent);
-}
-.item:focus-visible {
-  outline-color: color-mix(in oklab, Highlight 60%, CanvasText 50%);
+  color: var(--text-primary);
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0.15rem;
+.item:hover {
+  background: var(--hover-bg);
 }
+
+.item:focus-visible {
+  outline-color: var(--focus-ring);
+}
+
+/* Multi-line truncation */
 .text {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -82,22 +153,30 @@
   line-clamp: 3;
   overflow: hidden;
   white-space: normal;
+  color: var(--text-secondary);
 }
 
-/* Active/edited/editing states */
+/* ----------------------------------------
+   STATES
+---------------------------------------- */
 .item--active {
-  background: color-mix(in oklab, CanvasText 14%, transparent);
-  outline: 2px solid color-mix(in oklab, Highlight 60%, CanvasText 40%);
+  background: var(--active-bg);
+  outline: 2px solid var(--focus-ring);
 }
+
 .item--edited {
   border-left: 3px solid rebeccapurple;
   padding-left: calc(0.6rem - 3px);
 }
+
 .item--editing {
-  border-left: 3px dashed #a855f7;
-  background: color-mix(in oklab, CanvasText 8%, transparent);
+  border-left: 3px dashed var(--accent);
+  background: var(--editing-bg);
 }
 
+/* ----------------------------------------
+   BADGES
+---------------------------------------- */
 .badge {
   display: inline-block;
   min-width: 1.25rem;
@@ -106,26 +185,33 @@
   line-height: 1.1;
   text-align: center;
   border-radius: 999px;
+  color: #ffffff;
 }
+
 .badge--edits {
   background: rebeccapurple;
-  color: white;
-  font-weight: 600;
-}
-.badge--editing {
-  background: #a855f7;
-  color: white;
   font-weight: 600;
 }
 
+.badge--editing {
+  background: var(--accent);
+  font-weight: 600;
+}
+
+/* ----------------------------------------
+   FOOTER
+---------------------------------------- */
 .meta {
   opacity: 0.7;
   font-size: 11px;
+  color: var(--text-secondary);
 }
+
 .footer {
   padding: 0.5rem 0.8rem;
-  border-top: 1px solid color-mix(in oklab, CanvasText 16%, transparent);
+  border-top: 1px solid var(--divider-color);
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  color: var(--text-secondary);
 }

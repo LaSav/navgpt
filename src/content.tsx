@@ -1,6 +1,7 @@
 import { render } from 'preact'
 import Sidebar from './ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
+import { attachThemeSync } from './dom/themeSync'
 import { CHAT_ROOT_SELECTOR } from './dom/selectors'
 import { setGlobalStyles } from './ui/globalStyles'
 
@@ -23,7 +24,7 @@ function mountSidebar() {
   const shadow = host.attachShadow({ mode: 'open' })
   const mount = document.createElement('div')
   shadow.appendChild(mount)
-  return { shadow, mount }
+  return { host, shadow, mount } // <-- include host
 }
 
 // Find real scroller
@@ -165,6 +166,9 @@ async function main() {
   const root = mountSidebar()
   if (!root) return
 
+  // Theme sync
+  const detachThemeSync = attachThemeSync(root.host)
+
   await loadStyles(root.shadow)
 
   // Global highlight CSS for page elements
@@ -248,6 +252,7 @@ async function main() {
   window.addEventListener('unload', () => {
     tracker.disconnect()
     stop()
+    detachThemeSync()
   })
 }
 
