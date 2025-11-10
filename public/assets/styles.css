@@ -105,15 +105,6 @@
   text-overflow: ellipsis;
 }
 
-.search {
-  width: 90%;
-  padding: 0.45rem 0.6rem;
-  border-radius: 0.6rem;
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
 /* ----------------------------------------
    LIST + ITEMS
 ---------------------------------------- */

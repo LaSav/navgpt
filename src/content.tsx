@@ -1,4 +1,5 @@
 import { render } from 'preact'
+import { useEffect, useRef, useState, useMemo } from 'preact/hooks'
 import Sidebar from './ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
@@ -24,7 +25,7 @@ function mountSidebar() {
   const shadow = host.attachShadow({ mode: 'open' })
   const mount = document.createElement('div')
   shadow.appendChild(mount)
-  return { host, shadow, mount } // <-- include host
+  return { host, shadow, mount }
 }
 
 // Find real scroller
@@ -73,7 +74,7 @@ function highlightAndScrollTo(el: HTMLElement) {
   setTimeout(() => el.classList.remove('__prompt-highlight'), 1700)
 }
 
-// Keep active sidebar item visible
+// Keep active sidebar item visible (when you click to jump)
 function scrollSidebarActiveIntoView(
   shadowMount: HTMLElement,
   activeId?: string
@@ -97,81 +98,54 @@ function scrollSidebarActiveIntoView(
   }
 }
 
-/** IntersectionObserver-based active tracker */
-function makeActiveTracker(
-  getItems: () => PromptItem[],
-  getScroller: () => HTMLElement | null,
-  onActive: (id?: string) => void
-) {
-  let io: IntersectionObserver | null = null
+/** Mount-once app so Sidebar state (like search) is stable */
+function App({ shadowMount }: { shadowMount: HTMLElement }) {
+  const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
+  const [activeId, setActiveId] = useState<string | undefined>(undefined)
+  const scrollerRef = useRef<HTMLElement | null>(
+    items[0]?.el ? getScrollParent(items[0].el) : null
+  )
 
-  function refreshObserver() {
-    io?.disconnect()
-    const scroller = getScroller()
-    if (!scroller) return
-
-    const offset = getStickyOffsetWithin(scroller) + 16
-
-    io = new IntersectionObserver(
-      (entries) => {
-        const items = getItems()
-        const sRect = scroller.getBoundingClientRect()
-        const anchorY = sRect.top + offset
-
-        // Filter to intersecting targets and compute top distances
-        let bestId: string | undefined
-        let bestScore = Number.POSITIVE_INFINITY
-
-        for (const e of entries) {
-          if (!e.isIntersecting) continue
-          const el = e.target as HTMLElement
-          const item = items.find((it) => it.el === el)
-          if (!item) continue
-          const rTop = el.getBoundingClientRect().top
-          const dy = rTop - anchorY
-          const score = Math.abs(dy) + (dy < 0 ? 8 : 0) // light bias to items below anchor
-          if (score < bestScore) {
-            bestScore = score
-            bestId = item.id
-          }
-        }
-
-        if (bestId) onActive(bestId)
-      },
-      {
-        root: scroller,
-        rootMargin: '0px',
-        threshold: [0, 0.01, 0.1, 0.5, 1],
-      }
-    )
-
-    // (Re)observe current items
-    for (const it of getItems()) {
-      if (it.el?.isConnected) io.observe(it.el)
+  const onJump = (id: string) => {
+    const target = items.find((i) => i.id === id)?.el
+    if (target) {
+      highlightAndScrollTo(target)
+      setActiveId(id)
+      scrollSidebarActiveIntoView(shadowMount, id)
     }
   }
 
-  function onItemsChanged() {
-    refreshObserver()
-  }
+  useEffect(() => {
+    const stop = observePrompts((next) => {
+      setItems(next) // ← updates items; query is preserved
+      const nextScroller = next[0]?.el
+        ? getScrollParent(next[0].el)
+        : scrollerRef.current
+      scrollerRef.current = nextScroller
+    })
+    return () => stop()
+  }, [])
 
-  function disconnect() {
-    io?.disconnect()
-  }
+  useEffect(() => {
+    const onResize = () => {
+      scrollerRef.current = items[0]?.el
+        ? getScrollParent(items[0].el)
+        : scrollerRef.current
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [items])
 
-  return { refreshObserver, onItemsChanged, disconnect }
+  return <Sidebar items={items} onJump={onJump} activeId={activeId} />
 }
 
 async function main() {
   const root = mountSidebar()
   if (!root) return
 
-  // Theme sync
   const detachThemeSync = attachThemeSync(root.host)
-
   await loadStyles(root.shadow)
 
-  // Global highlight CSS for page elements
   setGlobalStyles(
     'highlight',
     `
@@ -188,70 +162,13 @@ async function main() {
   `
   )
 
-  let items: PromptItem[] = scrapePrompts()
-  let scroller: HTMLElement | null = items[0]?.el
-    ? getScrollParent(items[0].el)
-    : null
-  let activeId: string | undefined
-
-  const onJump = (id: string) => {
-    const target = items.find((i) => i.id === id)?.el
-    if (target) {
-      highlightAndScrollTo(target)
-      activeId = id
-      render(
-        <Sidebar items={items} onJump={onJump} activeId={activeId} />,
-        root.mount
-      )
-      scrollSidebarActiveIntoView(root.mount, activeId)
-    }
-  }
-
-  // IO-based active tracker
-  const tracker = makeActiveTracker(
-    () => items,
-    () => scroller,
-    (id) => {
-      if (id && id !== activeId) {
-        activeId = id
-        render(
-          <Sidebar items={items} onJump={onJump} activeId={activeId} />,
-          root.mount
-        )
-        scrollSidebarActiveIntoView(root.mount, activeId)
-      }
-    }
-  )
-  tracker.refreshObserver()
-
-  // Initial render
-  render(
-    <Sidebar items={items} onJump={onJump} activeId={activeId} />,
-    root.mount
-  )
-
-  // React to DOM changes
-  const stop = observePrompts((next) => {
-    items = next
-    scroller = items[0]?.el ? getScrollParent(items[0].el) : scroller
-    render(
-      <Sidebar items={items} onJump={onJump} activeId={activeId} />,
-      root.mount
-    )
-    tracker.onItemsChanged()
-
-    // After paint, re-evaluate once (helps after big layout changes)
-    requestAnimationFrame(() => tracker.onItemsChanged())
-  })
-
-  // Make space for panel
   const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR)
   if (chatRoot instanceof HTMLElement) chatRoot.style.paddingRight = '330px'
 
-  // Cleanup
+  // Mount exactly once; no repeated render() calls from elsewhere.
+  render(<App shadowMount={root.mount} />, root.mount)
+
   window.addEventListener('unload', () => {
-    tracker.disconnect()
-    stop()
     detachThemeSync()
   })
 }

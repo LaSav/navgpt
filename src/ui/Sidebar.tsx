@@ -1,56 +1,32 @@
-import { useMemo, useState } from 'preact/hooks'
 import type { PromptItem } from '../dom/scrape'
 
 type Props = {
-  items: PromptItem[]
+  items: PromptItem[] // ← already filtered by parent
   onJump: (id: string) => void
   activeId?: string
 }
 
 export default function Sidebar({ items, onJump, activeId }: Props) {
-  const [q, setQ] = useState('')
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return items
-    return items.filter((i) => i.text.toLowerCase().includes(s))
-  }, [items, q])
-
   return (
     <div class='container' role='complementary' aria-label='Prompt history'>
       <div class='header'>
         <div class='title'>Prompt history</div>
       </div>
 
-      <div style={{ padding: '.5rem .6rem' }}>
-        <input
-          class='search'
-          placeholder='Search prompts…'
-          value={q}
-          onInput={(e: any) => setQ(e.currentTarget.value)}
-        />
-      </div>
-
       <div class='list'>
-        {filtered.length === 0 && (
+        {items.length === 0 && (
           <div style={{ opacity: 0.7, padding: '.6rem' }}>
             No prompts found yet.
           </div>
         )}
 
-        {filtered.map((p, idx) => (
+        {items.map((p, idx) => (
           <button
             data-prompt-id={p.id}
             class={`item ${p.edits > 0 ? 'item--edited' : ''} ${
               p.isEditing ? 'item--editing' : ''
             } ${activeId === p.id ? 'item--active' : ''}`}
             onClick={() => onJump(p.id)}
-            title={
-              p.edits > 0
-                ? `Edited ${p.edits} time${p.edits > 1 ? 's' : ''} (v${
-                    p.currentVersion
-                  }/${p.totalVersions})`
-                : undefined
-            }
           >
             <div class='row'>
               <div class='meta'>#{idx + 1}</div>
