@@ -23,21 +23,26 @@ export default function Sidebar({ items, onJump, activeId }: Props) {
         {items.map((p, idx) => (
           <button
             data-prompt-id={p.id}
-            class={`item ${p.edits > 0 ? 'item--edited' : ''} ${
-              p.isEditing ? 'item--editing' : ''
-            } ${activeId === p.id ? 'item--active' : ''}`}
+            class={`item ${activeId === p.id ? 'item--active' : ''}`}
             onClick={() => onJump(p.id)}
           >
-            <div class='row'>
-              <div class='meta'>#{idx + 1}</div>
-              {p.edits > 0 && (
-                <span class='badge badge--edits'>
-                  {p.currentVersion} / {p.totalVersions}
-                </span>
-              )}
-              {p.isEditing && <span class='badge badge--editing'>editing</span>}
+            <div class='text-row'>
+              <span class='meta--index'>{idx + 1}</span>
+              <div class='text'>{p.text}</div>
             </div>
-            <div class='text'>{p.text}</div>
+
+            {(p.edits > 0 || p.isEditing) && (
+              <div class='item-badges'>
+                {p.edits > 0 && (
+                  <span class='badge badge--edits'>
+                    {p.currentVersion} / {p.totalVersions}
+                  </span>
+                )}
+                {p.isEditing && (
+                  <span class='badge badge--editing'>editing</span>
+                )}
+              </div>
+            )}
           </button>
         ))}
       </div>
