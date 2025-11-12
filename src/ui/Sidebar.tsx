@@ -31,18 +31,28 @@ export default function Sidebar({ items, onJump, activeId }: Props) {
               <div class='text'>{p.text}</div>
             </div>
 
-            {(p.edits > 0 || p.isEditing) && (
-              <div class='item-badges'>
-                {p.edits > 0 && (
-                  <span class='badge badge--edits'>
-                    {p.currentVersion} / {p.totalVersions}
-                  </span>
-                )}
-                {p.isEditing && (
-                  <span class='badge badge--editing'>editing</span>
-                )}
-              </div>
-            )}
+            <div class='item-badges'>
+              {p.hasCode && (
+                <span
+                  class='badge'
+                  title={
+                    p.codeLang
+                      ? `Contains code (${p.codeLang})`
+                      : 'Contains code'
+                  }
+                >
+                  {p.codeLang ? p.codeLang : '</>'}
+                </span>
+              )}
+
+              {p.edits > 0 && (
+                <span class='badge badge--edits'>
+                  {p.currentVersion} / {p.totalVersions}
+                </span>
+              )}
+
+              {p.isEditing && <span class='badge badge--editing'>editing</span>}
+            </div>
           </button>
         ))}
       </div>

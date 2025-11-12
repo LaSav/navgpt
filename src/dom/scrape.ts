@@ -3,11 +3,13 @@ import { uid } from '../util/id'
 export type PromptItem = {
   id: string
   text: string
-  el: HTMLElement // scroll target: bubble if present else article
+  el: HTMLElement
   edits: number
   totalVersions: number
   currentVersion: number
   isEditing: boolean
+  hasCode: boolean
+  codeLang?: string
 }
 
 /** Single-line summary or generous preview (clamped by CSS in sidebar). */
@@ -43,6 +45,58 @@ function parseRevisionInfo(article: HTMLElement | null) {
   }
 }
 
+/** Pull a language hint from code element attributes/classes */
+function inferLangFrom(el: Element): string | undefined {
+  const tryVals = [
+    el.getAttribute('data-language'),
+    el.getAttribute('data-lang'),
+    el.getAttribute('lang'),
+    el.getAttribute('aria-label'),
+    el.className,
+  ].filter(Boolean) as string[]
+
+  for (const v of tryVals) {
+    // language-javascript, lang-js, language-tsx, etc
+    const m = v.match(/\b(language|lang)[-:_ ]?([\w+.-]+)\b/i)
+    if (m && m[2]) return m[2].toLowerCase()
+    // highlight.js style classes like "hljs javascript"
+    const m2 = v.match(
+      /\b(js|javascript|jsx|ts|tsx|python|py|java|kotlin|c\+\+|cpp|csharp|cs|go|rust|rb|ruby|php|bash|sh|zsh|shell|sql|json|yaml|toml)\b/i
+    )
+    if (m2 && m2[0]) return m2[0].toLowerCase()
+  }
+  return undefined
+}
+
+/** Strong DOM-first detection; fallback to backticks in raw text */
+function detectCodeInArticle(article: HTMLElement, rawText: string) {
+  // Prefer real code blocks anywhere in the user turn
+  const preCodes = Array.from(article.querySelectorAll('pre code'))
+  if (preCodes.length) {
+    const lang =
+      inferLangFrom(preCodes[0]) ||
+      (preCodes[0].parentElement
+        ? inferLangFrom(preCodes[0].parentElement!)
+        : undefined)
+    return { hasCode: true, codeLang: lang }
+  }
+
+  // Any inline code?
+  const inlineCode = article.querySelector('code')
+  if (inlineCode) {
+    return { hasCode: true, codeLang: inferLangFrom(inlineCode) }
+  }
+
+  // Raw backticks (e.g., while editing/drafts or if rendering hasn’t happened yet)
+  if (/```/.test(rawText)) {
+    const m = rawText.match(/```([\w+.-]*)/)
+    const lang = m && m[1] ? m[1].toLowerCase() || undefined : undefined
+    return { hasCode: true, codeLang: lang }
+  }
+
+  return { hasCode: false, codeLang: undefined }
+}
+
 export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   const articles = Array.from(
     root.querySelectorAll<HTMLElement>('article[data-turn="user"]')
@@ -67,12 +121,15 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       const bubble = article.querySelector<HTMLElement>(
         '[data-message-author-role="user"]'
       )
-      text = bubble?.innerText || bubble?.textContent || '' || ''
+      text = bubble?.textContent || bubble?.innerText || ''
       if (bubble) scrollTarget = bubble // precise aim when not editing
     }
 
     const { currentVersion, totalVersions, edits } = parseRevisionInfo(article)
     const short = summarize(text, 2000)
+
+    // Detect code using the full article DOM (more reliable than bubble text)
+    const { hasCode, codeLang } = detectCodeInArticle(article, text)
 
     return {
       id,
@@ -82,6 +139,8 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       totalVersions,
       currentVersion,
       isEditing,
+      hasCode,
+      codeLang,
     }
   })
 }
@@ -89,14 +148,53 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
 /** Observe DOM changes and rescrape when messages appear/disappear. */
 export function observePrompts(onUpdate: (items: PromptItem[]) => void) {
   const emit = () => onUpdate(scrapePrompts())
-  const mo = new MutationObserver(() => emit())
+
+  // Let the DOM settle (2 frames) so backticks have time to render as <pre><code>
+  const settle = (fn: () => void) =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => requestAnimationFrame(fn))
+    )
+
+  let scheduled = false
+  const schedule = () => {
+    if (scheduled) return
+    scheduled = true
+    settle(() => {
+      scheduled = false
+      emit()
+    })
+  }
+
+  const mo = new MutationObserver((mutations) => {
+    const relevant = mutations.some((m) => {
+      if (m.type === 'childList') {
+        const added = Array.from(m.addedNodes)
+        const removed = Array.from(m.removedNodes)
+        if (
+          added
+            .concat(removed)
+            .some(
+              (n) =>
+                n instanceof Element &&
+                (n as Element).matches?.('article[data-turn="user"]')
+            )
+        )
+          return true
+      }
+      const el = m.target as Element
+      return !!el?.closest?.('article[data-turn="user"]')
+    })
+    if (relevant) schedule()
+  })
+
   mo.observe(document.body, {
     childList: true,
     subtree: true,
-    characterData: true,
     attributes: true,
     attributeFilter: ['class', 'data-state', 'data-writing-block'],
+    characterData: false,
   })
-  emit()
+
+  settle(emit)
   return () => mo.disconnect()
 }

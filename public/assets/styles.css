@@ -236,12 +236,6 @@
   color: var(--text-primary);
 }
 
-.badge--code {
-  background: #0ea5e9;
-  color: white;
-  font-weight: 600;
-}
-
 .badge--edits {
   background: transparent;
 }
