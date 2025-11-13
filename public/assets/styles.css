@@ -93,6 +93,19 @@
   flex-direction: column;
   border-left: solid 1px var(--border-color);
   background-color: var(--bg-primary);
+
+  /* NEW: slide in/out */
+  transform: translateX(0);
+  transition: transform 0.18s ease-out;
+}
+
+/* Panel closed → moved fully off-screen to the right */
+.container--closed {
+  transform: translateX(100%);
+}
+
+.container--open {
+  transform: translateX(0);
 }
 
 .header {
@@ -211,6 +224,54 @@
 ---------------------------------------- */
 .item--active {
   background: var(--active-bg);
+}
+
+/* ----------------------------------------
+   TOGGLE BUTTON
+---------------------------------------- */
+.sidebar-toggle {
+  position: fixed;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2147483648; /* above the sidebar */
+  padding: 0.25rem 0.55rem;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.18);
+}
+
+.sidebar-toggle:hover {
+  background: var(--hover-bg);
+}
+
+/* Slightly tuck it in when sidebar is open */
+.sidebar-toggle--open {
+  right: 0.8rem;
+}
+
+/* Small collapse button in the panel header */
+.header-toggle {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.header-toggle:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
 }
 
 /* ----------------------------------------
