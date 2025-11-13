@@ -1,14 +1,21 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect } from 'preact/hooks'
 import type { PromptItem } from '../dom/scrape'
 
 type Props = {
-  items: PromptItem[] // ← already filtered by parent
+  items: PromptItem[]
   onJump: (id: string) => void
   activeId?: string
+  isOpen: boolean
+  onToggle: () => void
 }
 
-export default function Sidebar({ items, onJump, activeId }: Props) {
-  const [isOpen, setIsOpen] = useState(true)
+export default function Sidebar({
+  items,
+  onJump,
+  activeId,
+  isOpen,
+  onToggle,
+}: Props) {
   const panelId = 'prompt-history-sidebar'
 
   // ⌥H to toggle
@@ -16,14 +23,12 @@ export default function Sidebar({ items, onJump, activeId }: Props) {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.key === 'h' || e.key === 'H') && e.altKey) {
         e.preventDefault()
-        setIsOpen((prev) => !prev)
+        onToggle()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
-
-  const toggle = () => setIsOpen((prev) => !prev)
+  }, [onToggle])
 
   return (
     <>
@@ -31,7 +36,7 @@ export default function Sidebar({ items, onJump, activeId }: Props) {
       <button
         class={`sidebar-toggle ${isOpen ? 'sidebar-toggle--open' : ''}`}
         type='button'
-        onClick={toggle}
+        onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls={panelId}
       >
@@ -52,7 +57,7 @@ export default function Sidebar({ items, onJump, activeId }: Props) {
           <button
             type='button'
             class='header-toggle'
-            onClick={toggle}
+            onClick={onToggle}
             aria-label='Collapse prompt history'
           >
             ⟩

@@ -98,10 +98,19 @@ function scrollSidebarActiveIntoView(
   }
 }
 
-/** Mount-once app so Sidebar state (like search) is stable */
-function App({ shadowMount }: { shadowMount: HTMLElement }) {
+function App({
+  shadowMount,
+  chatRoot,
+  originalPaddingRight,
+}: {
+  shadowMount: HTMLElement
+  chatRoot?: HTMLElement
+  originalPaddingRight: string
+}) {
   const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
+  const [isOpen, setIsOpen] = useState(true)
+
   const scrollerRef = useRef<HTMLElement | null>(
     items[0]?.el ? getScrollParent(items[0].el) : null
   )
@@ -114,6 +123,17 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       scrollSidebarActiveIntoView(shadowMount, id)
     }
   }
+
+  // Keep chat layout in sync with sidebar open/closed state
+  useEffect(() => {
+    if (!chatRoot) return
+    // Optional: smooth transition
+    chatRoot.style.transition = chatRoot.style.transition
+      ? `${chatRoot.style.transition}, padding-right 0.18s ease-out`
+      : 'padding-right 0.18s ease-out'
+
+    chatRoot.style.paddingRight = isOpen ? '330px' : originalPaddingRight
+  }, [chatRoot, originalPaddingRight, isOpen])
 
   useEffect(() => {
     const stop = observePrompts((next) => {
@@ -136,7 +156,17 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     return () => window.removeEventListener('resize', onResize)
   }, [items])
 
-  return <Sidebar items={items} onJump={onJump} activeId={activeId} />
+  const handleToggle = () => setIsOpen((prev) => !prev)
+
+  return (
+    <Sidebar
+      items={items}
+      onJump={onJump}
+      activeId={activeId}
+      isOpen={isOpen}
+      onToggle={handleToggle}
+    />
+  )
 }
 
 async function main() {
@@ -163,10 +193,21 @@ async function main() {
   )
 
   const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR)
-  if (chatRoot instanceof HTMLElement) chatRoot.style.paddingRight = '330px'
+
+  let originalPaddingRight = '0px'
+  if (chatRoot instanceof HTMLElement) {
+    originalPaddingRight = getComputedStyle(chatRoot).paddingRight
+  }
 
   // Mount exactly once; no repeated render() calls from elsewhere.
-  render(<App shadowMount={root.mount} />, root.mount)
+  render(
+    <App
+      shadowMount={root.mount}
+      chatRoot={chatRoot instanceof HTMLElement ? chatRoot : undefined}
+      originalPaddingRight={originalPaddingRight}
+    />,
+    root.mount
+  )
 
   window.addEventListener('unload', () => {
     detachThemeSync()

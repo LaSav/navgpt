@@ -251,6 +251,11 @@
   background: var(--hover-bg);
 }
 
+.sidebar-toggle:not(.sidebar-toggle--open) {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 /* Slightly tuck it in when sidebar is open */
 .sidebar-toggle--open {
   right: 0.8rem;
