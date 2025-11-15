@@ -1,5 +1,8 @@
 import { useEffect } from 'preact/hooks'
 import type { PromptItem } from '../dom/scrape'
+import { MenuIcon } from './icons/MenuIcon'
+import { ArrowUp } from './icons/ArrowUp'
+import { ArrowDown } from './icons/ArrowDown'
 
 type Props = {
   items: PromptItem[]
@@ -28,22 +31,45 @@ export default function Sidebar({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onToggle])
+    // `onToggle` is stable enough for this usage; omitting deps avoids re-adding
+  }, [])
 
   return (
     <>
-      {/* Fixed toggle button in top-right of screen */}
-      <button
-        class={`sidebar-toggle ${isOpen ? 'sidebar-toggle--open' : ''}`}
-        type='button'
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        aria-controls={panelId}
+      {/* Collapsed mini column on the right when sidebar is closed */}
+      <div
+        class={`sidebar-mini ${isOpen ? 'sidebar-mini--hidden' : ''}`}
+        aria-hidden={isOpen}
       >
-        {isOpen ? 'Hide prompts' : 'Show prompts'}
-      </button>
+        {/* EXPAND button at the top */}
+        <button
+          type='button'
+          class='sidebar-mini__button sidebar-mini__button--primary'
+          onClick={onToggle}
+          aria-label='Expand prompt history'
+        >
+          <MenuIcon size={15} />
+        </button>
 
-      {/* Sliding panel */}
+        {/* The other two fill the remaining space equally */}
+        <button
+          type='button'
+          class='sidebar-mini__button sidebar-mini__button--fill'
+          aria-label='Previous prompt'
+        >
+          <ArrowUp size={15} />
+        </button>
+
+        <button
+          type='button'
+          class='sidebar-mini__button sidebar-mini__button--fill'
+          aria-label='Next prompt'
+        >
+          <ArrowDown size={15} />
+        </button>
+      </div>
+
+      {/* Sliding full panel */}
       <div
         id={panelId}
         class={`container ${isOpen ? 'container--open' : 'container--closed'}`}
@@ -60,7 +86,7 @@ export default function Sidebar({
             onClick={onToggle}
             aria-label='Collapse prompt history'
           >
-            ⟩
+            <MenuIcon size={15} />
           </button>
         </div>
 
