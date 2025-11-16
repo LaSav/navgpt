@@ -42,30 +42,32 @@ export default function Sidebar({
         aria-hidden={isOpen}
       >
         {/* EXPAND button at the top */}
-        <button
-          type='button'
-          class='sidebar-mini__button sidebar-mini__button--primary'
-          onClick={onToggle}
-          aria-label='Expand prompt history'
-        >
-          <MenuIcon size={15} />
-        </button>
+        <div class='header header--mini'>
+          <button
+            type='button'
+            class='sidebar-mini__button sidebar-mini__button--primary'
+            onClick={onToggle}
+            aria-label='Expand prompt history'
+          >
+            <MenuIcon size={18} />
+          </button>
+        </div>
 
         {/* The other two fill the remaining space equally */}
         <button
           type='button'
-          class='sidebar-mini__button sidebar-mini__button--fill'
+          class='sidebar-mini__button'
           aria-label='Previous prompt'
         >
-          <ArrowUp size={15} />
+          <ArrowUp size={18} />
         </button>
 
         <button
           type='button'
-          class='sidebar-mini__button sidebar-mini__button--fill'
+          class='sidebar-mini__button'
           aria-label='Next prompt'
         >
-          <ArrowDown size={15} />
+          <ArrowDown size={18} />
         </button>
       </div>
 
@@ -86,7 +88,7 @@ export default function Sidebar({
             onClick={onToggle}
             aria-label='Collapse prompt history'
           >
-            <MenuIcon size={15} />
+            <MenuIcon size={18} />
           </button>
         </div>
 

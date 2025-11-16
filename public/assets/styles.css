@@ -112,7 +112,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
+  height: 52px;
+  padding: 0 0.6rem;
 }
 
 .title {
@@ -269,6 +270,8 @@
   cursor: pointer;
   border-radius: 0.75rem;
   color: var(--text-secondary);
+  width: 38px;
+  height: 32px;
 }
 
 .header-toggle:hover {
@@ -285,13 +288,16 @@
   right: 0;
   width: 52px;
   height: 100vh;
-  z-index: 2147483646; /* just under the full panel */
+  z-index: 2147483646;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center; /* center buttons horizontally */
+  justify-content: flex-start;
   background-color: transparent;
   border-left: 1px solid var(--border-color);
   opacity: 1;
+  padding: 0rem 6px 0rem 6px; /* add a bit of vertical padding */
+  gap: 0.35rem; /* even spacing between header + buttons */
 }
 
 /* Hidden when sidebar is open */
@@ -310,25 +316,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
-  width: 100%;
   border-radius: 0.75rem;
+
+  /* Make them square-ish like ChatGPT’s icons */
+  width: 40px;
+  height: 32px;
 }
 
 /* Top (primary) button — fixed height */
-.sidebar-mini__button--primary {
-  flex: 0 0 auto;
-  height: 52px;
-  font-weight: 600;
-}
-
-/* Fill buttons — take remaining vertical space */
-.sidebar-mini__button--fill {
-  flex: 1 1 0;
-  border-top: none;
-  display: flex;
+.header--mini {
   align-items: center;
   justify-content: center;
+}
+
+/* Primary button just sits at the top, no stretching */
+.sidebar-mini__button--primary {
+  flex: 0 0 auto;
+  font-weight: 600;
+  padding: 0; /* rely on fixed width/height for size */
 }
 
 /* Hover — same as ChatGPT sidebar buttons */

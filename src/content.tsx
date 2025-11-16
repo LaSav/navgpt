@@ -132,7 +132,7 @@ function App({
       ? `${chatRoot.style.transition}, padding-right 0.18s ease-out`
       : 'padding-right 0.18s ease-out'
 
-    chatRoot.style.paddingRight = isOpen ? '330px' : originalPaddingRight
+    chatRoot.style.paddingRight = isOpen ? '330px' : '66px'
   }, [chatRoot, originalPaddingRight, isOpen])
 
   useEffect(() => {
@@ -176,21 +176,21 @@ async function main() {
   const detachThemeSync = attachThemeSync(root.host)
   await loadStyles(root.shadow)
 
-  setGlobalStyles(
-    'highlight',
-    `
-    @keyframes promptPulse {
-      0%   { background: rgba(138,180,248,.22); }
-      100% { background: transparent; }
-    }
-    .__prompt-highlight {
-      animation: promptPulse 1600ms ease-out 1;
-      outline: 3px solid #8ab4f8;
-      outline-offset: 2px;
-      border-radius: 8px;
-    }
-  `
-  )
+  // setGlobalStyles(
+  //   'highlight',
+  //   `
+  //   @keyframes promptPulse {
+  //     0%   { background: rgba(138,180,248,.22); }
+  //     100% { background: transparent; }
+  //   }
+  //   .__prompt-highlight {
+  //     animation: promptPulse 1600ms ease-out 1;
+  //     outline: 3px solid #8ab4f8;
+  //     outline-offset: 2px;
+  //     border-radius: 8px;
+  //   }
+  // `
+  // )
 
   const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR)
 
