@@ -147,7 +147,12 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
 
 /** Observe DOM changes and rescrape when messages appear/disappear. */
 export function observePrompts(onUpdate: (items: PromptItem[]) => void) {
-  const emit = () => onUpdate(scrapePrompts())
+  const emit = () => {
+    console.log('[scrapePrompts] rescrape triggered')
+    const items = scrapePrompts()
+    console.log('[scrapePrompts] items:', items)
+    onUpdate(items)
+  }
 
   // Let the DOM settle (2 frames) so backticks have time to render as <pre><code>
   const settle = (fn: () => void) =>

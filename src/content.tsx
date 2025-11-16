@@ -68,11 +68,11 @@ function snapToPrompt(el: HTMLElement) {
   })
 }
 
-function highlightAndScrollTo(el: HTMLElement) {
-  snapToPrompt(el)
-  el.classList.add('__prompt-highlight')
-  setTimeout(() => el.classList.remove('__prompt-highlight'), 1700)
-}
+// function highlightAndScrollTo(el: HTMLElement) {
+//   snapToPrompt(el)
+//   el.classList.add('__prompt-highlight')
+//   setTimeout(() => el.classList.remove('__prompt-highlight'), 1700)
+// }
 
 // Keep active sidebar item visible (when you click to jump)
 function scrollSidebarActiveIntoView(
@@ -118,11 +118,40 @@ function App({
   const onJump = (id: string) => {
     const target = items.find((i) => i.id === id)?.el
     if (target) {
-      highlightAndScrollTo(target)
+      snapToPrompt(target)
       setActiveId(id)
       scrollSidebarActiveIntoView(shadowMount, id)
     }
   }
+
+  const goToPromptByOffset = (direction: 1 | -1) => {
+    if (!items.length) return
+
+    const currentIndex = activeId
+      ? items.findIndex((i) => i.id === activeId)
+      : -1
+
+    let nextIndex: number
+
+    if (currentIndex === -1) {
+      // No active prompt yet: jump to start or end depending on direction
+      nextIndex = direction === 1 ? 0 : items.length - 1
+    } else {
+      nextIndex = currentIndex + direction
+      // Clamp to bounds (no wrap-around)
+      if (nextIndex < 0) nextIndex = 0
+      if (nextIndex >= items.length) nextIndex = items.length - 1
+    }
+
+    const nextItem = items[nextIndex]
+    if (nextItem) {
+      onJump(nextItem.id)
+    }
+  }
+
+  const handleNextPrompt = () => goToPromptByOffset(1)
+  const handlePreviousPrompt = () => goToPromptByOffset(-1)
+  // --- END NEW ---
 
   // Keep chat layout in sync with sidebar open/closed state
   useEffect(() => {
@@ -165,6 +194,8 @@ function App({
       activeId={activeId}
       isOpen={isOpen}
       onToggle={handleToggle}
+      onNextPrompt={handleNextPrompt}
+      onPreviousPrompt={handlePreviousPrompt}
     />
   )
 }

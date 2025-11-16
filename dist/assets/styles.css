@@ -93,13 +93,27 @@
   flex-direction: column;
   border-left: solid 1px var(--border-color);
   background-color: var(--bg-primary);
+
+  /* NEW: slide in/out */
+  transform: translateX(0);
+  transition: transform 0.18s ease-out;
+}
+
+/* Panel closed → moved fully off-screen to the right */
+.container--closed {
+  transform: translateX(100%);
+}
+
+.container--open {
+  transform: translateX(0);
 }
 
 .header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
+  height: 52px;
+  padding: 0 0.6rem;
 }
 
 .title {
@@ -211,6 +225,139 @@
 ---------------------------------------- */
 .item--active {
   background: var(--active-bg);
+}
+
+/* ----------------------------------------
+   TOGGLE BUTTON
+---------------------------------------- */
+.sidebar-toggle {
+  position: fixed;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2147483648; /* above the sidebar */
+  padding: 0.25rem 0.55rem;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-shadow: 0 2px 6px rgba(var(--shadow-rgb), 0.18);
+}
+
+.sidebar-toggle:hover {
+  background: var(--hover-bg);
+}
+
+.sidebar-toggle:not(.sidebar-toggle--open) {
+  top: 95%;
+  transform: translateY(-50%);
+}
+
+/* Slightly tuck it in when sidebar is open */
+.sidebar-toggle--open {
+  right: 0.8rem;
+}
+
+/* Small collapse button in the panel header */
+.header-toggle {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 0.75rem;
+  color: var(--text-secondary);
+  width: 38px;
+  height: 32px;
+}
+
+.header-toggle:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+/* NEW: Header arrow buttons (visual match to header-toggle) */
+.header-iconButton {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 0.75rem;
+  color: var(--text-secondary);
+  width: 38px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-iconButton:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+/* ----------------------------------------
+   COLLAPSED MINI COLUMN
+---------------------------------------- */
+.sidebar-mini {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 52px;
+  height: 100vh;
+  z-index: 2147483646;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* center buttons horizontally */
+  justify-content: flex-start;
+  background-color: transparent;
+  border-left: 1px solid var(--border-color);
+  opacity: 1;
+  padding: 0rem 6px 0rem 6px; /* add a bit of vertical padding */
+  gap: 0.35rem; /* even spacing between header + buttons */
+}
+
+/* Hidden when sidebar is open */
+.sidebar-mini--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-mini__button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+
+  /* Make them square-ish like ChatGPT’s icons */
+  width: 40px;
+  height: 32px;
+}
+
+/* Top (primary) button — fixed height */
+.header--mini {
+  align-items: center;
+  justify-content: center;
+}
+
+/* Primary button just sits at the top, no stretching */
+.sidebar-mini__button--primary {
+  flex: 0 0 auto;
+  font-weight: 600;
+  padding: 0; /* rely on fixed width/height for size */
+}
+
+/* Hover — same as ChatGPT sidebar buttons */
+.sidebar-mini__button:hover {
+  background: var(--hover-bg);
 }
 
 /* ----------------------------------------

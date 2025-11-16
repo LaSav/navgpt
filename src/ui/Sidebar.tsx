@@ -10,6 +10,8 @@ type Props = {
   activeId?: string
   isOpen: boolean
   onToggle: () => void
+  onNextPrompt: () => void
+  onPreviousPrompt: () => void
 }
 
 export default function Sidebar({
@@ -18,21 +20,45 @@ export default function Sidebar({
   activeId,
   isOpen,
   onToggle,
+  onNextPrompt,
+  onPreviousPrompt,
 }: Props) {
   const panelId = 'prompt-history-sidebar'
 
-  // ⌥H to toggle
+  // ⌥H toggle, ⌥↑ / ⌥↓ navigate
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.key === 'h' || e.key === 'H') && e.altKey) {
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      const isTyping =
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        (target && target.isContentEditable)
+
+      if (isTyping) return
+
+      if (e.altKey && (e.key === 'h' || e.key === 'H')) {
         e.preventDefault()
         onToggle()
+        return
+      }
+
+      if (e.altKey && e.key === 'ArrowUp') {
+        e.preventDefault()
+        onPreviousPrompt()
+        return
+      }
+
+      if (e.altKey && e.key === 'ArrowDown') {
+        e.preventDefault()
+        onNextPrompt()
+        return
       }
     }
+
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-    // `onToggle` is stable enough for this usage; omitting deps avoids re-adding
-  }, [])
+  }, [onToggle, onNextPrompt, onPreviousPrompt])
 
   return (
     <>
@@ -58,6 +84,7 @@ export default function Sidebar({
           type='button'
           class='sidebar-mini__button'
           aria-label='Previous prompt'
+          onClick={onPreviousPrompt}
         >
           <ArrowUp size={18} />
         </button>
@@ -66,6 +93,7 @@ export default function Sidebar({
           type='button'
           class='sidebar-mini__button'
           aria-label='Next prompt'
+          onClick={onNextPrompt}
         >
           <ArrowDown size={18} />
         </button>
@@ -81,6 +109,25 @@ export default function Sidebar({
         <div class='header'>
           <div class='title'>Prompt history</div>
 
+          {/* NEW: Previous / Next header buttons */}
+          <button
+            type='button'
+            class='header-iconButton'
+            onClick={onPreviousPrompt}
+            aria-label='Previous prompt'
+          >
+            <ArrowUp size={18} />
+          </button>
+
+          <button
+            type='button'
+            class='header-iconButton'
+            onClick={onNextPrompt}
+            aria-label='Next prompt'
+          >
+            <ArrowDown size={18} />
+          </button>
+
           {/* In-panel collapse button */}
           <button
             type='button'
@@ -92,6 +139,7 @@ export default function Sidebar({
           </button>
         </div>
 
+        {/* ... rest of Sidebar unchanged ... */}
         <div class='list'>
           {items.length === 0 && (
             <div style={{ opacity: 0.7, padding: '.6rem' }}>
@@ -144,7 +192,7 @@ export default function Sidebar({
             {items.length} prompt{items.length === 1 ? '' : 's'}
           </span>
           <span class='meta' style={{ marginLeft: 'auto' }}>
-            ⌥H to toggle
+            ⌥H toggle • ⌥↑ / ⌥↓ jump
           </span>
         </div>
       </div>
