@@ -252,7 +252,7 @@
 }
 
 .sidebar-toggle:not(.sidebar-toggle--open) {
-  top: 50%;
+  top: 95%;
   transform: translateY(-50%);
 }
 
@@ -267,16 +267,73 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  padding: 0.15rem 0.35rem;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1;
+  border-radius: 0.75rem;
   color: var(--text-secondary);
 }
 
 .header-toggle:hover {
   background: var(--hover-bg);
   color: var(--text-primary);
+}
+
+/* ----------------------------------------
+   COLLAPSED MINI COLUMN
+---------------------------------------- */
+.sidebar-mini {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 52px;
+  height: 100vh;
+  z-index: 2147483646; /* just under the full panel */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background-color: transparent;
+  border-left: 1px solid var(--border-color);
+  opacity: 1;
+}
+
+/* Hidden when sidebar is open */
+.sidebar-mini--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-mini__button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  border-radius: 0.75rem;
+}
+
+/* Top (primary) button — fixed height */
+.sidebar-mini__button--primary {
+  flex: 0 0 auto;
+  height: 52px;
+  font-weight: 600;
+}
+
+/* Fill buttons — take remaining vertical space */
+.sidebar-mini__button--fill {
+  flex: 1 1 0;
+  border-top: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hover — same as ChatGPT sidebar buttons */
+.sidebar-mini__button:hover {
+  background: var(--hover-bg);
 }
 
 /* ----------------------------------------
