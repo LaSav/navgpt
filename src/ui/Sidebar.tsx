@@ -4,6 +4,7 @@ import { MenuIcon } from './icons/MenuIcon'
 import { ArrowUp } from './icons/ArrowUp'
 import { ArrowDown } from './icons/ArrowDown'
 import { Code } from './icons/Code'
+import { Tooltip } from './Tooltip'
 
 type Props = {
   items: PromptItem[]
@@ -91,35 +92,55 @@ export default function Sidebar({
       >
         {/* EXPAND button at the top */}
         <div class='header header--mini'>
+          <Tooltip label='Open prompt history' placement='left'>
+            <button
+              type='button'
+              class='sidebar-mini__button sidebar-mini__button--primary'
+              onClick={onToggle}
+              aria-label='Expand prompt history'
+            >
+              <MenuIcon size={18} />
+            </button>
+          </Tooltip>
+        </div>
+        <Tooltip
+          placement='left'
+          label={
+            <>
+              <span class='tooltip-text'>Previous prompt</span>
+              <span class='tooltip-shortcut'>⌥↑</span>
+            </>
+          }
+        >
           <button
             type='button'
-            class='sidebar-mini__button sidebar-mini__button--primary'
-            onClick={onToggle}
-            aria-label='Expand prompt history'
+            class='sidebar-mini__button'
+            aria-label='Previous prompt'
+            onClick={onPreviousPrompt}
+            disabled={!canGoPrevious}
           >
-            <MenuIcon size={18} />
+            <ArrowUp size={18} />
           </button>
-        </div>
-
-        <button
-          type='button'
-          class='sidebar-mini__button'
-          aria-label='Previous prompt'
-          onClick={onPreviousPrompt}
-          disabled={!canGoPrevious}
+        </Tooltip>
+        <Tooltip
+          placement='left'
+          label={
+            <>
+              <span class='tooltip-text'>Next prompt</span>
+              <span class='tooltip-shortcut'>⌥↓</span>
+            </>
+          }
         >
-          <ArrowUp size={18} />
-        </button>
-
-        <button
-          type='button'
-          class='sidebar-mini__button'
-          aria-label='Next prompt'
-          onClick={onNextPrompt}
-          disabled={!canGoNext}
-        >
-          <ArrowDown size={18} />
-        </button>
+          <button
+            type='button'
+            class='sidebar-mini__button'
+            aria-label='Next prompt'
+            onClick={onNextPrompt}
+            disabled={!canGoNext}
+          >
+            <ArrowDown size={18} />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Sliding full panel */}
@@ -131,36 +152,55 @@ export default function Sidebar({
       >
         <div class='header'>
           <div class='title'>Prompt history</div>
-
-          <button
-            type='button'
-            class='header-iconButton'
-            onClick={onPreviousPrompt}
-            aria-label='Previous prompt'
-            disabled={!canGoPrevious}
+          <Tooltip
+            label={
+              <>
+                <span class='tooltip-text'>Previous prompt</span>
+                <span class='tooltip-shortcut'>⌥↑</span>
+              </>
+            }
           >
-            <ArrowUp size={18} />
-          </button>
+            <button
+              type='button'
+              class='header-iconButton'
+              onClick={onPreviousPrompt}
+              aria-label='Previous prompt'
+              disabled={!canGoPrevious}
+            >
+              <ArrowUp size={18} />
+            </button>
+          </Tooltip>
 
-          <button
-            type='button'
-            class='header-iconButton'
-            onClick={onNextPrompt}
-            aria-label='Next prompt'
-            disabled={!canGoNext}
+          <Tooltip
+            label={
+              <>
+                <span class='tooltip-text'>Next prompt</span>
+                <span class='tooltip-shortcut'>⌥↓</span>
+              </>
+            }
           >
-            <ArrowDown size={18} />
-          </button>
+            <button
+              type='button'
+              class='header-iconButton'
+              onClick={onNextPrompt}
+              aria-label='Next prompt'
+              disabled={!canGoNext}
+            >
+              <ArrowDown size={18} />
+            </button>
+          </Tooltip>
 
           {/* In-panel collapse button */}
-          <button
-            type='button'
-            class='header-toggle'
-            onClick={onToggle}
-            aria-label='Collapse prompt history'
-          >
-            <MenuIcon size={18} />
-          </button>
+          <Tooltip label='Close'>
+            <button
+              type='button'
+              class='header-toggle'
+              onClick={onToggle}
+              aria-label='Collapse prompt history'
+            >
+              <MenuIcon size={18} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* ... rest of Sidebar unchanged ... */}
@@ -198,7 +238,10 @@ export default function Sidebar({
                 )}
 
                 {p.edits > 0 && (
-                  <span class='badge badge--edits'>
+                  <span
+                    class='badge badge--edits'
+                    title={`edited ${p.totalVersions} times`}
+                  >
                     {p.currentVersion} / {p.totalVersions}
                   </span>
                 )}
@@ -216,7 +259,7 @@ export default function Sidebar({
             {items.length} prompt{items.length === 1 ? '' : 's'}
           </span>
           <span class='meta' style={{ marginLeft: 'auto' }}>
-            ⌥H toggle • ⌥↑ / ⌥↓ jump
+            Feedback
           </span>
         </div>
       </div>

@@ -73,7 +73,8 @@
 }
 
 :host,
-.container {
+.container,
+.sidebar-mini {
   font: 13px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
     Noto Sans, Arial;
   color: var(--text-primary);
@@ -400,6 +401,57 @@
   background: var(--badge-editing-bg); /* full accent for “editing” state */
 }
 
+/* ----------------------------------------
+TOOLTIP
+---------------------------------------- */
+
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 1000;
+  max-width: 220px;
+  padding: 4px 8px;
+  border-radius: 0.45rem;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  background: black;
+  color: var(--text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateY(-4px);
+}
+
+.tooltip--top {
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, -4px);
+}
+
+.tooltip--bottom {
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 4px);
+}
+
+.tooltip--left {
+  right: 100%;
+  top: 50%;
+  transform: translate(-4px, -50%); /* same -4px offset you use elsewhere */
+}
+
+.tooltip-text {
+  color: white;
+}
+
+.tooltip-shortcut {
+  color: var(--text-secondary); /* light gray */
+  margin-left: 4px;
+}
 /* ----------------------------------------
    FOOTER
 ---------------------------------------- */
