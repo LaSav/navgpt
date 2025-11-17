@@ -134,14 +134,13 @@ function App({
     let nextIndex: number
 
     if (currentIndex === -1) {
-      // No active prompt yet: jump to start or end depending on direction
       nextIndex = direction === 1 ? 0 : items.length - 1
     } else {
       nextIndex = currentIndex + direction
-      // Clamp to bounds (no wrap-around)
-      if (nextIndex < 0) nextIndex = 0
-      if (nextIndex >= items.length) nextIndex = items.length - 1
     }
+
+    // Clamp: if out of range, do nothing
+    if (nextIndex < 0 || nextIndex >= items.length) return
 
     const nextItem = items[nextIndex]
     if (nextItem) {
@@ -151,7 +150,6 @@ function App({
 
   const handleNextPrompt = () => goToPromptByOffset(1)
   const handlePreviousPrompt = () => goToPromptByOffset(-1)
-  // --- END NEW ---
 
   // Keep chat layout in sync with sidebar open/closed state
   useEffect(() => {

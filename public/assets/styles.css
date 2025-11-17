@@ -298,6 +298,15 @@
   color: var(--text-primary);
 }
 
+.header-iconButton:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.sidebar-mini__button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
 /* ----------------------------------------
    COLLAPSED MINI COLUMN
 ---------------------------------------- */

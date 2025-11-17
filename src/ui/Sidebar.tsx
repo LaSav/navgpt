@@ -3,6 +3,7 @@ import type { PromptItem } from '../dom/scrape'
 import { MenuIcon } from './icons/MenuIcon'
 import { ArrowUp } from './icons/ArrowUp'
 import { ArrowDown } from './icons/ArrowDown'
+import { Code } from './icons/Code'
 
 type Props = {
   items: PromptItem[]
@@ -25,6 +26,26 @@ export default function Sidebar({
 }: Props) {
   const panelId = 'prompt-history-sidebar'
 
+  const hasItems = items.length > 0
+  const currentIndex = activeId ? items.findIndex((i) => i.id === activeId) : -1
+
+  let canGoPrevious = false
+  let canGoNext = false
+
+  if (hasItems) {
+    if (currentIndex === -1) {
+      // Nothing active yet:
+      // you’re effectively “after” the last prompt
+      // → can go previous (to last), but not next
+      canGoPrevious = true
+      canGoNext = false
+    } else {
+      // Normal in-list behavior
+      canGoPrevious = currentIndex > 0
+      canGoNext = currentIndex < items.length - 1
+    }
+  }
+
   // ⌥H toggle, ⌥↑ / ⌥↓ navigate
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -44,12 +65,14 @@ export default function Sidebar({
       }
 
       if (e.altKey && e.key === 'ArrowUp') {
+        if (!canGoPrevious) return
         e.preventDefault()
         onPreviousPrompt()
         return
       }
 
       if (e.altKey && e.key === 'ArrowDown') {
+        if (!canGoNext) return
         e.preventDefault()
         onNextPrompt()
         return
@@ -58,8 +81,7 @@ export default function Sidebar({
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onToggle, onNextPrompt, onPreviousPrompt])
-
+  }, [onToggle, onNextPrompt, onPreviousPrompt, canGoNext, canGoPrevious])
   return (
     <>
       {/* Collapsed mini column on the right when sidebar is closed */}
@@ -79,12 +101,12 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* The other two fill the remaining space equally */}
         <button
           type='button'
           class='sidebar-mini__button'
           aria-label='Previous prompt'
           onClick={onPreviousPrompt}
+          disabled={!canGoPrevious}
         >
           <ArrowUp size={18} />
         </button>
@@ -94,6 +116,7 @@ export default function Sidebar({
           class='sidebar-mini__button'
           aria-label='Next prompt'
           onClick={onNextPrompt}
+          disabled={!canGoNext}
         >
           <ArrowDown size={18} />
         </button>
@@ -109,12 +132,12 @@ export default function Sidebar({
         <div class='header'>
           <div class='title'>Prompt history</div>
 
-          {/* NEW: Previous / Next header buttons */}
           <button
             type='button'
             class='header-iconButton'
             onClick={onPreviousPrompt}
             aria-label='Previous prompt'
+            disabled={!canGoPrevious}
           >
             <ArrowUp size={18} />
           </button>
@@ -124,6 +147,7 @@ export default function Sidebar({
             class='header-iconButton'
             onClick={onNextPrompt}
             aria-label='Next prompt'
+            disabled={!canGoNext}
           >
             <ArrowDown size={18} />
           </button>
@@ -169,7 +193,7 @@ export default function Sidebar({
                         : 'Contains code'
                     }
                   >
-                    {p.codeLang ? p.codeLang : '</>'}
+                    {p.codeLang ? p.codeLang : <Code />}
                   </span>
                 )}
 
