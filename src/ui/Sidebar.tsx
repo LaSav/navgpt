@@ -5,6 +5,7 @@ import { ArrowUp } from './icons/ArrowUp'
 import { ArrowDown } from './icons/ArrowDown'
 import { Code } from './icons/Code'
 import { Tooltip } from './Tooltip'
+import { Edited } from './icons/Edited'
 
 type Props = {
   items: PromptItem[]
@@ -35,19 +36,14 @@ export default function Sidebar({
 
   if (hasItems) {
     if (currentIndex === -1) {
-      // Nothing active yet:
-      // you’re effectively “after” the last prompt
-      // → can go previous (to last), but not next
       canGoPrevious = true
       canGoNext = false
     } else {
-      // Normal in-list behavior
       canGoPrevious = currentIndex > 0
       canGoNext = currentIndex < items.length - 1
     }
   }
 
-  // ⌥H toggle, ⌥↑ / ⌥↓ navigate
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
@@ -83,14 +79,14 @@ export default function Sidebar({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onToggle, onNextPrompt, onPreviousPrompt, canGoNext, canGoPrevious])
+
   return (
     <>
-      {/* Collapsed mini column on the right when sidebar is closed */}
+      {/* Collapsed mini column */}
       <div
         class={`sidebar-mini ${isOpen ? 'sidebar-mini--hidden' : ''}`}
         aria-hidden={isOpen}
       >
-        {/* EXPAND button at the top */}
         <div class='header header--mini'>
           <Tooltip label='Open prompt history' placement='left'>
             <button
@@ -99,10 +95,11 @@ export default function Sidebar({
               onClick={onToggle}
               aria-label='Expand prompt history'
             >
-              <MenuIcon size={18} />
+              <MenuIcon size={22} />
             </button>
           </Tooltip>
         </div>
+
         <Tooltip
           placement='left'
           label={
@@ -122,6 +119,7 @@ export default function Sidebar({
             <ArrowUp size={18} />
           </button>
         </Tooltip>
+
         <Tooltip
           placement='left'
           label={
@@ -143,7 +141,7 @@ export default function Sidebar({
         </Tooltip>
       </div>
 
-      {/* Sliding full panel */}
+      {/* Full panel */}
       <div
         id={panelId}
         class={`container ${isOpen ? 'container--open' : 'container--closed'}`}
@@ -152,6 +150,7 @@ export default function Sidebar({
       >
         <div class='header'>
           <div class='title'>Prompt history</div>
+
           <Tooltip
             label={
               <>
@@ -190,7 +189,6 @@ export default function Sidebar({
             </button>
           </Tooltip>
 
-          {/* In-panel collapse button */}
           <Tooltip label='Close'>
             <button
               type='button'
@@ -198,12 +196,11 @@ export default function Sidebar({
               onClick={onToggle}
               aria-label='Collapse prompt history'
             >
-              <MenuIcon size={18} />
+              <MenuIcon size={22} />
             </button>
           </Tooltip>
         </div>
 
-        {/* ... rest of Sidebar unchanged ... */}
         <div class='list'>
           {items.length === 0 && (
             <div style={{ opacity: 0.7, padding: '.6rem' }}>
@@ -224,31 +221,48 @@ export default function Sidebar({
               </div>
 
               <div class='item-badges'>
-                {p.hasCode && (
-                  <span
-                    class='badge'
-                    title={
-                      p.codeLang
-                        ? `Contains code (${p.codeLang})`
-                        : 'Contains code'
-                    }
-                  >
-                    {p.codeLang ? p.codeLang : <Code />}
-                  </span>
-                )}
+                {/* Code badge without tooltip */}
+                <div class='badge-slot'>
+                  {p.hasCode ? (
+                    <span
+                      class='badge'
+                      title={
+                        p.codeLang
+                          ? `Contains code (${p.codeLang})`
+                          : 'Contains code'
+                      }
+                    >
+                      {p.codeLang ? p.codeLang : <Code />}
+                    </span>
+                  ) : (
+                    <span class='badge-placeholder'></span>
+                  )}
+                </div>
 
-                {p.edits > 0 && (
-                  <span
-                    class='badge badge--edits'
-                    title={`edited ${p.totalVersions} times`}
-                  >
-                    {p.currentVersion} / {p.totalVersions}
-                  </span>
-                )}
+                {/* Edits badge without tooltip */}
+                <div class='badge-slot'>
+                  {p.edits > 0 ? (
+                    <span
+                      class='badge badge--edits'
+                      title={`${p.totalVersions} edits`}
+                    >
+                      <Edited />
+                      <span class='badge-text'>
+                        {p.currentVersion} / {p.totalVersions}
+                      </span>
+                    </span>
+                  ) : (
+                    <span class='badge-placeholder'></span>
+                  )}
+                </div>
 
-                {p.isEditing && (
-                  <span class='badge badge--editing'>editing</span>
-                )}
+                <div class='badge-slot'>
+                  {p.isEditing ? (
+                    <span class='badge badge--editing'>editing</span>
+                  ) : (
+                    <span class='badge-placeholder'></span>
+                  )}
+                </div>
               </div>
             </button>
           ))}

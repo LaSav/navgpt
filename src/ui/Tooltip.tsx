@@ -4,7 +4,7 @@ import type { ComponentChildren } from 'preact'
 type TooltipProps = {
   label: ComponentChildren
   children: ComponentChildren
-  placement?: 'top' | 'bottom' | 'left'
+  placement?: 'top' | 'bottom' | 'left' | 'bottom-offset'
 }
 
 export function Tooltip({
