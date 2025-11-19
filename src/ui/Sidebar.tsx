@@ -215,64 +215,52 @@ export default function Sidebar({
               class={`item ${activeId === p.id ? 'item--active' : ''}`}
               onClick={() => onJump(p.id)}
             >
-              <div class='text-row'>
+              <div className='item-meta'>
                 <span class='meta--index'>{idx + 1}</span>
+
+                {p.hasCode && (
+                  <span
+                    class='badge'
+                    title={
+                      p.codeLang
+                        ? `Contains code (${p.codeLang})`
+                        : 'Contains code'
+                    }
+                  >
+                    {p.codeLang ? p.codeLang : <Code size={11} />}
+                  </span>
+                )}
+              </div>
+              <div class='text-row'>
                 <div class='text'>{p.text}</div>
               </div>
 
-              <div class='item-badges'>
-                {/* Code badge without tooltip */}
-                <div class='badge-slot'>
-                  {p.hasCode ? (
-                    <span
-                      class='badge'
-                      title={
-                        p.codeLang
-                          ? `Contains code (${p.codeLang})`
-                          : 'Contains code'
-                      }
-                    >
-                      {p.codeLang ? p.codeLang : <Code />}
+              <div class='item-footer'>
+                {p.edits > 0 && (
+                  <span
+                    class='badge badge--edits'
+                    title={`${p.totalVersions} edits`}
+                  >
+                    <Edited />
+                    <span class='badge-text'>
+                      {p.currentVersion} / {p.totalVersions}
                     </span>
-                  ) : (
-                    <span class='badge-placeholder'></span>
-                  )}
-                </div>
+                  </span>
+                )}
 
-                {/* Edits badge without tooltip */}
-                <div class='badge-slot'>
-                  {p.edits > 0 ? (
-                    <span
-                      class='badge badge--edits'
-                      title={`${p.totalVersions} edits`}
-                    >
-                      <Edited />
-                      <span class='badge-text'>
-                        {p.currentVersion} / {p.totalVersions}
-                      </span>
-                    </span>
-                  ) : (
-                    <span class='badge-placeholder'></span>
-                  )}
-                </div>
-
-                <div class='badge-slot'>
-                  {p.isEditing ? (
-                    <span class='badge badge--editing'>editing</span>
-                  ) : (
-                    <span class='badge-placeholder'></span>
-                  )}
-                </div>
+                {p.isEditing && (
+                  <span class='badge badge--editing'>editing</span>
+                )}
               </div>
             </button>
           ))}
         </div>
 
         <div class='footer'>
-          <span class='meta'>
+          <span class='footer--meta'>
             {items.length} prompt{items.length === 1 ? '' : 's'}
           </span>
-          <span class='meta' style={{ marginLeft: 'auto' }}>
+          <span class='footer--meta' style={{ marginLeft: 'auto' }}>
             Feedback
           </span>
         </div>
