@@ -145,16 +145,103 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   })
 }
 
+// --- NEW: Stricter relevance detection ----------------------------
+
+function isRelevantMutationBatch(mutations: MutationRecord[]): boolean {
+  return mutations.some(isRelevantMutation)
+}
+
+function isRelevantMutation(m: MutationRecord): boolean {
+  if (m.type === 'childList') {
+    const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]
+
+    // Case 1: a user article itself was added/removed
+    if (
+      nodes.some(
+        (n) =>
+          n instanceof HTMLElement &&
+          (n.matches('article[data-turn="user"]') ||
+            !!n.querySelector?.('article[data-turn="user"]'))
+      )
+    ) {
+      return true
+    }
+
+    // Case 2: children changed *within* a user article – e.g. edit mode toggled
+    const targetEl = m.target as HTMLElement
+    const userArticle = targetEl.closest(
+      'article[data-turn="user"]'
+    ) as HTMLElement | null
+
+    if (userArticle) {
+      // If we added/removed a textarea or editor-like element, we care.
+      if (
+        nodes.some(
+          (n) =>
+            n instanceof HTMLElement &&
+            (n.matches('textarea, [contenteditable="true"], form') ||
+              !!n.querySelector?.('textarea, [contenteditable="true"]'))
+        )
+      ) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  if (m.type === 'attributes') {
+    const el = m.target as HTMLElement
+    if (!el) return false
+
+    const userArticle = el.closest(
+      'article[data-turn="user"]'
+    ) as HTMLElement | null
+    if (!userArticle) return false
+
+    // Only treat attribute changes on the article itself (or revision UI)
+    // as relevant.
+    if (el === userArticle) return true
+
+    if (
+      el.classList.contains('tabular-nums') ||
+      el.getAttribute('aria-label') === 'Previous response' ||
+      el.getAttribute('aria-label') === 'Next response'
+    ) {
+      return true
+    }
+
+    return false
+  }
+
+  return false
+}
+
 /** Observe DOM changes and rescrape when messages appear/disappear. */
-export function observePrompts(onUpdate: (items: PromptItem[]) => void) {
+export function observePrompts(
+  onUpdate: (items: PromptItem[]) => void,
+  root: ParentNode = document
+) {
+  let lastSignature: string | null = null
+
   const emit = () => {
-    console.log('[scrapePrompts] rescrape triggered')
     const items = scrapePrompts()
+
+    const signature = items
+      .map(
+        (i) =>
+          `${i.id}|${i.edits}|${i.currentVersion}|${i.totalVersions}|${i.text}`
+      )
+      .join('||')
+
+    if (signature === lastSignature) return
+    lastSignature = signature
+
+    console.log('[scrapePrompts] rescrape triggered')
     console.log('[scrapePrompts] items:', items)
     onUpdate(items)
   }
 
-  // Let the DOM settle (2 frames) so backticks have time to render as <pre><code>
   const settle = (fn: () => void) =>
     requestAnimationFrame(() =>
       requestAnimationFrame(() => requestAnimationFrame(fn))
@@ -170,29 +257,17 @@ export function observePrompts(onUpdate: (items: PromptItem[]) => void) {
     })
   }
 
+  const observerTarget =
+    root instanceof Document
+      ? root.body || document.body
+      : (root as Element | DocumentFragment)
+
   const mo = new MutationObserver((mutations) => {
-    const relevant = mutations.some((m) => {
-      if (m.type === 'childList') {
-        const added = Array.from(m.addedNodes)
-        const removed = Array.from(m.removedNodes)
-        if (
-          added
-            .concat(removed)
-            .some(
-              (n) =>
-                n instanceof Element &&
-                (n as Element).matches?.('article[data-turn="user"]')
-            )
-        )
-          return true
-      }
-      const el = m.target as Element
-      return !!el?.closest?.('article[data-turn="user"]')
-    })
+    const relevant = isRelevantMutationBatch(mutations)
     if (relevant) schedule()
   })
 
-  mo.observe(document.body, {
+  mo.observe(observerTarget, {
     childList: true,
     subtree: true,
     attributes: true,

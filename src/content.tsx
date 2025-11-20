@@ -163,15 +163,17 @@ function App({
   }, [chatRoot, originalPaddingRight, isOpen])
 
   useEffect(() => {
+    const rootNode = chatRoot ?? document
     const stop = observePrompts((next) => {
-      setItems(next) // ← updates items; query is preserved
+      setItems(next)
       const nextScroller = next[0]?.el
         ? getScrollParent(next[0].el)
         : scrollerRef.current
       scrollerRef.current = nextScroller
-    })
+    }, rootNode)
+
     return () => stop()
-  }, [])
+  }, [chatRoot])
 
   useEffect(() => {
     const onResize = () => {
