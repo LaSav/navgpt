@@ -149,7 +149,7 @@ export default function Sidebar({
         aria-label='Prompt history'
       >
         <div class='header'>
-          <div class='title'>Prompt history</div>
+          <div class='title'>Prompts</div>
 
           <Tooltip
             label={
@@ -204,7 +204,7 @@ export default function Sidebar({
         <div class='list'>
           {items.length === 0 && (
             <div style={{ opacity: 0.7, padding: '.6rem' }}>
-              No prompts found yet.
+              No prompts found.
             </div>
           )}
 
@@ -215,7 +215,7 @@ export default function Sidebar({
               class={`item ${activeId === p.id ? 'item--active' : ''}`}
               onClick={() => onJump(p.id)}
             >
-              <div className='item-meta'>
+              <div class='item-meta'>
                 <span class='meta--index'>{idx + 1}</span>
 
                 {p.hasCode && (

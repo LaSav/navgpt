@@ -20,12 +20,8 @@
   --elevation-mix: 6%;
 
   --badge-editing-bg: var(--accent);
-  --badge-edits-bg: color-mix(
-    in oklab,
-    var(--text-primary) 22%,
-    transparent
-  ); /* neutral counter */
-  --badge-text: #ffffff; /* keep high contrast */
+  --badge-edits-bg: color-mix(in oklab, var(--text-primary) 22%, transparent);
+  --badge-text: #ffffff;
 }
 
 /* ----------------------------------------
@@ -34,11 +30,11 @@
 :host([data-theme='dark']) {
   --text-sm: 0.875rem;
 
-  --bg-primary: #181818; /* bg-primary */
-  --text-primary: #fff; /* text-primary */
+  --bg-primary: #181818;
+  --text-primary: #fff;
 
-  --bg-secondary: #ffffff1a; /* bg-secondary */
-  --text-secondary: #afafaf; /* text-secondary */
+  --bg-secondary: #ffffff1a;
+  --text-secondary: #afafaf;
 
   --border-color: #ffffff0d;
   --divider-color: color-mix(in oklab, var(--text-primary) 16%, transparent);
@@ -54,7 +50,6 @@
   --badge-text: #ffffff;
 }
 
-/* Optional — ensures correct theme even before JS loads */
 :host-context([data-theme='dark']) {
   --text-sm: 0.875rem;
 
@@ -89,18 +84,15 @@
   position: fixed;
   top: 0;
   right: 0;
-  z-index: 2147483647;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   border-left: solid 1px var(--border-color);
   background-color: var(--bg-primary);
-
-  /* NEW: slide in/out */
   transform: translateX(0);
   transition: transform 0.18s ease-out;
 }
 
-/* Panel closed → moved fully off-screen to the right */
 .container--closed {
   transform: translateX(100%);
 }
@@ -134,6 +126,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Firefox */
@@ -173,7 +167,7 @@
   display: flex;
   flex-direction: column;
   line-height: 1.75;
-  gap: 0.15rem; /* space between badges row and text */
+  gap: 0.15rem;
 }
 
 .item:hover {
@@ -186,17 +180,15 @@
 
 .item-footer {
   display: flex;
-  justify-content: end; /* spread slots across the width */
+  justify-content: end;
   align-items: center;
   margin-top: 0.15rem;
 }
 
-/* Optional: tighten badge line height slightly for a neater row */
 .item-badges .badge {
   line-height: 1;
 }
 
-/* Multi-line truncation */
 .text {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -209,13 +201,11 @@
 
 .text-row {
   display: flex;
-  align-items: flex-start; /* aligns index to top line of text */
+  align-items: flex-start;
   gap: 0.4rem;
 }
 
 .item-meta {
-  /* margin-top: 1px; */
-  /* min-width: 20px; */
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -226,7 +216,7 @@
   opacity: 0.45;
   font-size: 11px;
   font-weight: 500;
-  flex-shrink: 0; /* prevents index from wrapping */
+  flex-shrink: 0;
 }
 
 /* ----------------------------------------
@@ -243,7 +233,7 @@
   position: fixed;
   top: 0.6rem;
   right: 0.6rem;
-  z-index: 2147483648; /* above the sidebar */
+  z-index: 11;
   padding: 0.25rem 0.55rem;
   font-size: 11px;
   border-radius: 999px;
@@ -266,12 +256,10 @@
   transform: translateY(-50%);
 }
 
-/* Slightly tuck it in when sidebar is open */
 .sidebar-toggle--open {
   right: 0.8rem;
 }
 
-/* Small collapse button in the panel header */
 .header-toggle {
   margin-left: auto;
   border: none;
@@ -288,7 +276,6 @@
   color: var(--text-primary);
 }
 
-/* NEW: Header arrow buttons (visual match to header-toggle) */
 .header-iconButton {
   border: none;
   background: transparent;
@@ -325,19 +312,18 @@
   right: 0;
   width: 52px;
   height: 100vh;
-  z-index: 2147483646;
+  z-index: 10;
   display: flex;
   flex-direction: column;
-  align-items: center; /* center buttons horizontally */
+  align-items: center;
   justify-content: flex-start;
   background-color: transparent;
   border-left: 1px solid var(--border-color);
   opacity: 1;
-  padding: 0rem 6px 0rem 6px; /* add a bit of vertical padding */
-  gap: 0.35rem; /* even spacing between header + buttons */
+  padding: 0rem 6px 0rem 6px;
+  gap: 0.35rem;
 }
 
-/* Hidden when sidebar is open */
 .sidebar-mini--hidden {
   opacity: 0;
   pointer-events: none;
@@ -354,27 +340,22 @@
   align-items: center;
   justify-content: center;
   border-radius: 0.75rem;
-
-  /* Make them square-ish like ChatGPT’s icons */
   width: 40px;
   height: 32px;
 }
 
-/* Top (primary) button — fixed height */
 .header--mini {
   align-items: center;
   justify-content: center;
 }
 
-/* Primary button just sits at the top, no stretching */
 .sidebar-mini__button--primary {
   flex: 0 0 auto;
   font-weight: 600;
-  padding: 0; /* rely on fixed width/height for size */
+  padding: 0;
   cursor: ew-resize;
 }
 
-/* Hover — same as ChatGPT sidebar buttons */
 .sidebar-mini__button:hover {
   background: var(--hover-bg);
 }
@@ -387,7 +368,7 @@
   gap: 0.25rem;
   justify-content: flex-end;
   align-items: center;
-  min-height: 1.1rem; /* keeps layout stable when badges flicker in/out */
+  min-height: 1.1rem;
 }
 
 .badge {
@@ -396,20 +377,18 @@
   font-size: 11px;
   line-height: 1.1;
   text-align: center;
-  /* border-radius: 5px; */
-  /* border: solid 0.5px var(--text-primary); */
   color: var(--text-primary);
 }
 
 .badge--edits {
   background: transparent;
   display: inline-flex;
-  align-items: center; /* vertical alignment */
+  align-items: center;
   gap: 0.25rem;
 }
 
 .badge--editing {
-  background: var(--badge-editing-bg); /* full accent for “editing” state */
+  background: var(--badge-editing-bg);
 }
 
 /* ----------------------------------------
@@ -452,19 +431,15 @@ TOOLTIP
 .tooltip--left {
   right: 100%;
   top: 50%;
-  transform: translate(-4px, -50%); /* same -4px offset you use elsewhere */
+  transform: translate(-4px, -50%);
 }
 
 .tooltip--bottom-offset {
   top: calc(100% + 0.35rem);
 
-  /* position the tooltip’s LEFT EDGE under the badge */
   left: 0;
 
-  /* fine-tune the shift left or right */
-  transform: translateX(
-    -60%
-  ); /* adjust between -40% to -90% depending on look */
+  transform: translateX(-60%);
 }
 
 .tooltip-text {
@@ -472,7 +447,7 @@ TOOLTIP
 }
 
 .tooltip-shortcut {
-  color: var(--text-secondary); /* light gray */
+  color: var(--text-secondary);
   margin-left: 4px;
 }
 /* ----------------------------------------

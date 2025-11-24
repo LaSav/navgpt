@@ -1,18 +1,23 @@
 import { render } from 'preact'
-import { useEffect, useRef, useState, useMemo } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import Sidebar from './ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
 import { CHAT_ROOT_SELECTOR } from './dom/selectors'
-import { setGlobalStyles } from './ui/globalStyles'
 
 // Load CSS into the shadow root
 async function loadStyles(shadow: ShadowRoot) {
-  const url = chrome.runtime.getURL('assets/styles.css')
-  const css = await fetch(url).then((r) => r.text())
-  const style = document.createElement('style')
-  style.textContent = css
-  shadow.appendChild(style)
+  try {
+    const url = chrome.runtime.getURL('assets/styles.css')
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Failed to load CSS: ${res.status}`)
+    const css = await res.text()
+    const style = document.createElement('style')
+    style.textContent = css
+    shadow.appendChild(style)
+  } catch (err) {
+    console.warn('[prompt-sidebar] Failed to load styles', err)
+  }
 }
 
 // Shadow root mount
@@ -52,7 +57,6 @@ function getStickyOffsetWithin(scroller: HTMLElement): number {
   return header ? header.getBoundingClientRect().height : 0
 }
 
-// Snap-to-target (no animation, with tiny correction)
 function snapToPrompt(el: HTMLElement) {
   const scroller = getScrollParent(el)
   const offset = getStickyOffsetWithin(scroller) + 16
@@ -67,12 +71,6 @@ function snapToPrompt(el: HTMLElement) {
     if (Math.abs(residual) > 1) scroller.scrollTop += residual
   })
 }
-
-// function highlightAndScrollTo(el: HTMLElement) {
-//   snapToPrompt(el)
-//   el.classList.add('__prompt-highlight')
-//   setTimeout(() => el.classList.remove('__prompt-highlight'), 1700)
-// }
 
 // Keep active sidebar item visible (when you click to jump)
 function scrollSidebarActiveIntoView(
@@ -138,8 +136,6 @@ function App({
     } else {
       nextIndex = currentIndex + direction
     }
-
-    // Clamp: if out of range, do nothing
     if (nextIndex < 0 || nextIndex >= items.length) return
 
     const nextItem = items[nextIndex]
@@ -151,15 +147,20 @@ function App({
   const handleNextPrompt = () => goToPromptByOffset(1)
   const handlePreviousPrompt = () => goToPromptByOffset(-1)
 
-  // Keep chat layout in sync with sidebar open/closed state
+  const OPEN_WIDTH = 330
+  const MINI_WIDTH = 66
+
   useEffect(() => {
     if (!chatRoot) return
-    // Optional: smooth transition
+
     chatRoot.style.transition = chatRoot.style.transition
       ? `${chatRoot.style.transition}, padding-right 0.18s ease-out`
       : 'padding-right 0.18s ease-out'
 
-    chatRoot.style.paddingRight = isOpen ? '330px' : '66px'
+    const base = parseFloat(originalPaddingRight || '0') || 0
+    const extra = isOpen ? OPEN_WIDTH : MINI_WIDTH
+
+    chatRoot.style.paddingRight = `${base + extra}px`
   }, [chatRoot, originalPaddingRight, isOpen])
 
   useEffect(() => {
@@ -207,22 +208,6 @@ async function main() {
   const detachThemeSync = attachThemeSync(root.host)
   await loadStyles(root.shadow)
 
-  // setGlobalStyles(
-  //   'highlight',
-  //   `
-  //   @keyframes promptPulse {
-  //     0%   { background: rgba(138,180,248,.22); }
-  //     100% { background: transparent; }
-  //   }
-  //   .__prompt-highlight {
-  //     animation: promptPulse 1600ms ease-out 1;
-  //     outline: 3px solid #8ab4f8;
-  //     outline-offset: 2px;
-  //     border-radius: 8px;
-  //   }
-  // `
-  // )
-
   const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR)
 
   let originalPaddingRight = '0px'
@@ -230,7 +215,6 @@ async function main() {
     originalPaddingRight = getComputedStyle(chatRoot).paddingRight
   }
 
-  // Mount exactly once; no repeated render() calls from elsewhere.
   render(
     <App
       shadowMount={root.mount}

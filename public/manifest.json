@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Prompt History Sidebar",
+  "name": "ChatGPT Prompt Nav",
   "version": "0.1.0",
-  "description": "View prompt history in a side panel and jump to any prompt in ChatGPT.",
+  "description": "Navigate your prompt history in a side panel overlay for ChatGPT.",
   "host_permissions": ["https://chat.openai.com/*", "https://chatgpt.com/*"],
   "content_scripts": [
     {

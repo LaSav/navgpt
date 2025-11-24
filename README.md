@@ -13,10 +13,3 @@
 ### Tweaking selectors
 
 - If the sidebar isn’t picking up prompts, adjust `USER_MESSAGE_SELECTOR` in `src/dom/selectors.ts` to match the site’s current structure.
-
-### Quick ideas to extend
-
-- Persist prompt history to `chrome.storage.local` to survive reloads.
-- Add grouping by conversation, timestamps, and export to Markdown.
-- Add a mini preview (first tokens) on hover.
-- Add a setting to dock the panel left/right or auto-hide.

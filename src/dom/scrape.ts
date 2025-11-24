@@ -45,7 +45,6 @@ function parseRevisionInfo(article: HTMLElement | null) {
   }
 }
 
-/** Pull a language hint from code element attributes/classes */
 function inferLangFrom(el: Element): string | undefined {
   const tryVals = [
     el.getAttribute('data-language'),
@@ -56,10 +55,8 @@ function inferLangFrom(el: Element): string | undefined {
   ].filter(Boolean) as string[]
 
   for (const v of tryVals) {
-    // language-javascript, lang-js, language-tsx, etc
     const m = v.match(/\b(language|lang)[-:_ ]?([\w+.-]+)\b/i)
     if (m && m[2]) return m[2].toLowerCase()
-    // highlight.js style classes like "hljs javascript"
     const m2 = v.match(
       /\b(js|javascript|jsx|ts|tsx|python|py|java|kotlin|c\+\+|cpp|csharp|cs|go|rust|rb|ruby|php|bash|sh|zsh|shell|sql|json|yaml|toml)\b/i
     )
@@ -68,9 +65,7 @@ function inferLangFrom(el: Element): string | undefined {
   return undefined
 }
 
-/** Strong DOM-first detection; fallback to backticks in raw text */
 function detectCodeInArticle(article: HTMLElement, rawText: string) {
-  // Prefer real code blocks anywhere in the user turn
   const preCodes = Array.from(article.querySelectorAll('pre code'))
   if (preCodes.length) {
     const lang =
@@ -81,13 +76,11 @@ function detectCodeInArticle(article: HTMLElement, rawText: string) {
     return { hasCode: true, codeLang: lang }
   }
 
-  // Any inline code?
   const inlineCode = article.querySelector('code')
   if (inlineCode) {
     return { hasCode: true, codeLang: inferLangFrom(inlineCode) }
   }
 
-  // Raw backticks (e.g., while editing/drafts or if rendering hasn’t happened yet)
   if (/```/.test(rawText)) {
     const m = rawText.match(/```([\w+.-]*)/)
     const lang = m && m[1] ? m[1].toLowerCase() || undefined : undefined
@@ -103,7 +96,6 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   )
 
   return articles.map((article) => {
-    // Stable ID based on data-turn-id; fallback to a persistent data attribute
     const turnId = article.getAttribute('data-turn-id') || ''
     const id = turnId || (article.dataset.promptId ||= uid('prompt'))
     if (!article.dataset.promptId) article.dataset.promptId = id
@@ -116,19 +108,18 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
 
     if (isEditing) {
       text = textarea!.value
-      scrollTarget = article // bubble is absent during edit
+      scrollTarget = article
     } else {
       const bubble = article.querySelector<HTMLElement>(
         '[data-message-author-role="user"]'
       )
       text = bubble?.textContent || bubble?.innerText || ''
-      if (bubble) scrollTarget = bubble // precise aim when not editing
+      if (bubble) scrollTarget = bubble
     }
 
     const { currentVersion, totalVersions, edits } = parseRevisionInfo(article)
     const short = summarize(text, 2000)
 
-    // Detect code using the full article DOM (more reliable than bubble text)
     const { hasCode, codeLang } = detectCodeInArticle(article, text)
 
     return {
@@ -145,8 +136,6 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   })
 }
 
-// --- NEW: Stricter relevance detection ----------------------------
-
 function isRelevantMutationBatch(mutations: MutationRecord[]): boolean {
   return mutations.some(isRelevantMutation)
 }
@@ -155,7 +144,6 @@ function isRelevantMutation(m: MutationRecord): boolean {
   if (m.type === 'childList') {
     const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]
 
-    // Case 1: a user article itself was added/removed
     if (
       nodes.some(
         (n) =>
@@ -167,14 +155,12 @@ function isRelevantMutation(m: MutationRecord): boolean {
       return true
     }
 
-    // Case 2: children changed *within* a user article – e.g. edit mode toggled
     const targetEl = m.target as HTMLElement
     const userArticle = targetEl.closest(
       'article[data-turn="user"]'
     ) as HTMLElement | null
 
     if (userArticle) {
-      // If we added/removed a textarea or editor-like element, we care.
       if (
         nodes.some(
           (n) =>
@@ -199,8 +185,6 @@ function isRelevantMutation(m: MutationRecord): boolean {
     ) as HTMLElement | null
     if (!userArticle) return false
 
-    // Only treat attribute changes on the article itself (or revision UI)
-    // as relevant.
     if (el === userArticle) return true
 
     if (
@@ -217,7 +201,6 @@ function isRelevantMutation(m: MutationRecord): boolean {
   return false
 }
 
-/** Observe DOM changes and rescrape when messages appear/disappear. */
 export function observePrompts(
   onUpdate: (items: PromptItem[]) => void,
   root: ParentNode = document
