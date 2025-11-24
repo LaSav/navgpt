@@ -220,8 +220,6 @@ export function observePrompts(
     if (signature === lastSignature) return
     lastSignature = signature
 
-    console.log('[scrapePrompts] rescrape triggered')
-    console.log('[scrapePrompts] items:', items)
     onUpdate(items)
   }
 
