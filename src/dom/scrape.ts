@@ -208,7 +208,7 @@ export function observePrompts(
   let lastSignature: string | null = null
 
   const emit = () => {
-    const items = scrapePrompts()
+    const items = scrapePrompts(root)
 
     const signature = items
       .map(
