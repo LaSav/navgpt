@@ -213,7 +213,9 @@ export function observePrompts(
     const signature = items
       .map(
         (i) =>
-          `${i.id}|${i.edits}|${i.currentVersion}|${i.totalVersions}|${i.text}`
+          `${i.id}|${i.edits}|${i.currentVersion}|${i.totalVersions}|${
+            i.text
+          }|${i.isEditing ? 1 : 0}|${i.hasCode ? 1 : 0}|${i.codeLang ?? ''}`
       )
       .join('||')
 
