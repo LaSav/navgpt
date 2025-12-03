@@ -10,6 +10,7 @@ import { Edited } from './icons/Edited'
 type Props = {
   items: PromptItem[]
   onJump: (id: string) => void
+  onEdit: (id: string) => void
   activeId?: string
   isOpen: boolean
   onToggle: () => void
@@ -20,6 +21,7 @@ type Props = {
 export default function Sidebar({
   items,
   onJump,
+  onEdit,
   activeId,
   isOpen,
   onToggle,
@@ -209,11 +211,19 @@ export default function Sidebar({
           )}
 
           {items.map((p, idx) => (
-            <button
+            <div
               key={p.id}
               data-prompt-id={p.id}
               class={`item ${activeId === p.id ? 'item--active' : ''}`}
+              role='button'
+              tabIndex={0}
               onClick={() => onJump(p.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onJump(p.id)
+                }
+              }}
             >
               <div class='item-meta'>
                 <span class='meta--index'>{idx + 1}</span>
@@ -231,6 +241,7 @@ export default function Sidebar({
                   </span>
                 )}
               </div>
+
               <div class='text-row'>
                 <div class='text'>{p.text}</div>
               </div>
@@ -251,8 +262,19 @@ export default function Sidebar({
                 {p.isEditing && (
                   <span class='badge badge--editing'>editing</span>
                 )}
+
+                <button
+                  type='button'
+                  class='badge badge--edit-button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEdit(p.id)
+                  }}
+                >
+                  Edit
+                </button>
               </div>
-            </button>
+            </div>
           ))}
         </div>
 

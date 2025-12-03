@@ -122,6 +122,47 @@ function App({
     }
   }
 
+  const onEdit = (id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+
+    const article =
+      (item.el.closest('article[data-turn="user"]') as HTMLElement | null) ||
+      item.el
+
+    snapToPrompt(article)
+    setActiveId(id)
+    scrollSidebarActiveIntoView(shadowMount, id)
+
+    const focusTextarea = () => {
+      const textarea = article.querySelector<HTMLTextAreaElement>('textarea')
+      if (textarea) {
+        textarea.focus()
+        const len = textarea.value.length
+        textarea.setSelectionRange(len, len)
+      }
+    }
+
+    if (article.querySelector('textarea')) {
+      focusTextarea()
+      return
+    }
+
+    const editButton =
+      article.querySelector<HTMLButtonElement>(
+        'button[aria-label="Edit message"]'
+      ) ||
+      article.querySelector<HTMLButtonElement>('button[aria-label^="Edit"]')
+
+    if (!editButton) return
+
+    editButton.click()
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(focusTextarea)
+    })
+  }
+
   const goToPromptByOffset = (direction: 1 | -1) => {
     if (!items.length) return
 
@@ -197,6 +238,7 @@ function App({
       onToggle={handleToggle}
       onNextPrompt={handleNextPrompt}
       onPreviousPrompt={handlePreviousPrompt}
+      onEdit={onEdit}
     />
   )
 }
