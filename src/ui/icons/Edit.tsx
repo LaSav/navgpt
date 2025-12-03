@@ -1,4 +1,4 @@
-export function Edited({ size = 14 }: { size?: number }) {
+export function Edit({ size = 14 }: { size?: number }) {
   return (
     <svg
       width={size}

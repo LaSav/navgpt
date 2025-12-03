@@ -180,7 +180,7 @@
 
 .item-footer {
   display: flex;
-  justify-content: end;
+  justify-content: space-between;
   align-items: center;
   margin-top: 0.15rem;
 }
@@ -389,6 +389,25 @@
 
 .badge--editing {
   background: var(--badge-editing-bg);
+}
+
+.badge__button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  width: 25px;
+  height: 25px;
+}
+
+.badge__button:hover {
+  background: var(--hover-bg);
 }
 
 /* ----------------------------------------

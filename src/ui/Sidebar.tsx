@@ -5,7 +5,10 @@ import { ArrowUp } from './icons/ArrowUp'
 import { ArrowDown } from './icons/ArrowDown'
 import { Code } from './icons/Code'
 import { Tooltip } from './Tooltip'
-import { Edited } from './icons/Edited'
+import { Edit } from './icons/Edit'
+import { Copy } from './icons/Copy'
+import { ArrowLeft } from './icons/ArrowLeft'
+import { ArrowRight } from './icons/ArrowRight'
 
 type Props = {
   items: PromptItem[]
@@ -257,43 +260,52 @@ export default function Sidebar({
                 </div>
 
                 <div class='item-footer'>
+                  <button
+                    type='button'
+                    class='badge__button'
+                    aria-label='Copy Prompt'
+                    title='Copy prompt'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onCopy(p.id)
+                    }}
+                  >
+                    <Copy size={12} />
+                  </button>
                   {p.edits > 0 && (
                     <div class='edits-controls'>
-                      <span
-                        class='badge badge--edits'
-                        title={`${p.totalVersions} edits`}
-                      >
-                        <Edited />
-                        <span class='badge-text'>
+                      <span class='badge badge--edits'>
+                        <button
+                          type='button'
+                          class='badge__button'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onPreviousVersion(p.id)
+                          }}
+                          disabled={!canPrevVersion}
+                          aria-label='Previous edit version'
+                        >
+                          <ArrowLeft />
+                        </button>
+                        <span
+                          class='badge-text'
+                          title={`${p.totalVersions} edits`}
+                        >
                           {p.currentVersion} / {p.totalVersions}
                         </span>
+                        <button
+                          type='button'
+                          class='badge__button'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onNextVersion(p.id)
+                          }}
+                          disabled={!canNextVersion}
+                          aria-label='Next edit version'
+                        >
+                          <ArrowRight />
+                        </button>
                       </span>
-
-                      {/* NEW: version navigation buttons */}
-                      <button
-                        type='button'
-                        class='badge badge--versionButton'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onPreviousVersion(p.id)
-                        }}
-                        disabled={!canPrevVersion}
-                        aria-label='Previous edit version'
-                      >
-                        ‹
-                      </button>
-                      <button
-                        type='button'
-                        class='badge badge--versionButton'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onNextVersion(p.id)
-                        }}
-                        disabled={!canNextVersion}
-                        aria-label='Next edit version'
-                      >
-                        ›
-                      </button>
                     </div>
                   )}
 
@@ -303,24 +315,15 @@ export default function Sidebar({
 
                   <button
                     type='button'
-                    class='badge badge--edit-button'
+                    class='badge__button'
+                    aria-label='Edit Prompt'
+                    title='Edit prompt'
                     onClick={(e) => {
                       e.stopPropagation()
                       onEdit(p.id)
                     }}
                   >
-                    Edit
-                  </button>
-
-                  <button
-                    type='button'
-                    class='badge badge--copy-button'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onCopy(p.id)
-                    }}
-                  >
-                    Copy
+                    <Edit size={12} />
                   </button>
                 </div>
               </div>
