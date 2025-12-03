@@ -12,6 +12,8 @@ type Props = {
   onJump: (id: string) => void
   onEdit: (id: string) => void
   onCopy: (id: string) => void
+  onPreviousVersion: (id: string) => void
+  onNextVersion: (id: string) => void
   activeId?: string
   isOpen: boolean
   onToggle: () => void
@@ -24,6 +26,8 @@ export default function Sidebar({
   onJump,
   onEdit,
   onCopy,
+  onPreviousVersion,
+  onNextVersion,
   activeId,
   isOpen,
   onToggle,
@@ -212,83 +216,116 @@ export default function Sidebar({
             </div>
           )}
 
-          {items.map((p, idx) => (
-            <div
-              key={p.id}
-              data-prompt-id={p.id}
-              class={`item ${activeId === p.id ? 'item--active' : ''}`}
-              role='button'
-              tabIndex={0}
-              onClick={() => onJump(p.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onJump(p.id)
-                }
-              }}
-            >
-              <div class='item-meta'>
-                <span class='meta--index'>{idx + 1}</span>
+          {items.map((p, idx) => {
+            const canPrevVersion = p.currentVersion > 1
+            const canNextVersion = p.currentVersion < p.totalVersions
 
-                {p.hasCode && (
-                  <span
-                    class='badge'
-                    title={
-                      p.codeLang
-                        ? `Contains code (${p.codeLang})`
-                        : 'Contains code'
-                    }
-                  >
-                    {p.codeLang ? p.codeLang : <Code size={11} />}
-                  </span>
-                )}
-              </div>
+            return (
+              <div
+                key={p.id}
+                data-prompt-id={p.id}
+                class={`item ${activeId === p.id ? 'item--active' : ''}`}
+                role='button'
+                tabIndex={0}
+                onClick={() => onJump(p.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onJump(p.id)
+                  }
+                }}
+              >
+                <div class='item-meta'>
+                  <span class='meta--index'>{idx + 1}</span>
 
-              <div class='text-row'>
-                <div class='text'>{p.text}</div>
-              </div>
-
-              <div class='item-footer'>
-                {p.edits > 0 && (
-                  <span
-                    class='badge badge--edits'
-                    title={`${p.totalVersions} edits`}
-                  >
-                    <Edited />
-                    <span class='badge-text'>
-                      {p.currentVersion} / {p.totalVersions}
+                  {p.hasCode && (
+                    <span
+                      class='badge'
+                      title={
+                        p.codeLang
+                          ? `Contains code (${p.codeLang})`
+                          : 'Contains code'
+                      }
+                    >
+                      {p.codeLang ? p.codeLang : <Code size={11} />}
                     </span>
-                  </span>
-                )}
+                  )}
+                </div>
 
-                {p.isEditing && (
-                  <span class='badge badge--editing'>editing</span>
-                )}
+                <div class='text-row'>
+                  <div class='text'>{p.text}</div>
+                </div>
 
-                <button
-                  type='button'
-                  class='badge badge--edit-button'
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onEdit(p.id)
-                  }}
-                >
-                  Edit
-                </button>
+                <div class='item-footer'>
+                  {p.edits > 0 && (
+                    <div class='edits-controls'>
+                      <span
+                        class='badge badge--edits'
+                        title={`${p.totalVersions} edits`}
+                      >
+                        <Edited />
+                        <span class='badge-text'>
+                          {p.currentVersion} / {p.totalVersions}
+                        </span>
+                      </span>
 
-                <button
-                  type='button'
-                  class='badge badge--copy-button'
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onCopy(p.id)
-                  }}
-                >
-                  Copy
-                </button>
+                      {/* NEW: version navigation buttons */}
+                      <button
+                        type='button'
+                        class='badge badge--versionButton'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onPreviousVersion(p.id)
+                        }}
+                        disabled={!canPrevVersion}
+                        aria-label='Previous edit version'
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type='button'
+                        class='badge badge--versionButton'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onNextVersion(p.id)
+                        }}
+                        disabled={!canNextVersion}
+                        aria-label='Next edit version'
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+
+                  {p.isEditing && (
+                    <span class='badge badge--editing'>editing</span>
+                  )}
+
+                  <button
+                    type='button'
+                    class='badge badge--edit-button'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEdit(p.id)
+                    }}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type='button'
+                    class='badge badge--copy-button'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onCopy(p.id)
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <div class='footer'>

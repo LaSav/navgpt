@@ -190,6 +190,36 @@ function App({
     }
   }
 
+  const changeVersion = (id: string, direction: -1 | 1) => {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+
+    const article =
+      (item.el.closest('article[data-turn="user"]') as HTMLElement | null) ||
+      item.el
+
+    snapToPrompt(article)
+    setActiveId(id)
+    scrollSidebarActiveIntoView(shadowMount, id)
+
+    const selector =
+      direction === -1
+        ? 'button[aria-label="Previous response"]'
+        : 'button[aria-label="Next response"]'
+
+    const btn = article.querySelector<HTMLButtonElement>(selector)
+    if (!btn) return
+
+    const ariaDisabled = btn.getAttribute('aria-disabled')
+    if (btn.disabled || ariaDisabled === 'true') return
+
+    btn.click()
+    // The MutationObserver will pick up the change and update currentVersion/totalVersions.
+  }
+
+  const onPreviousVersion = (id: string) => changeVersion(id, -1)
+  const onNextVersion = (id: string) => changeVersion(id, 1)
+
   const goToPromptByOffset = (direction: 1 | -1) => {
     if (!items.length) return
 
@@ -267,6 +297,8 @@ function App({
       onPreviousPrompt={handlePreviousPrompt}
       onEdit={onEdit}
       onCopy={onCopy}
+      onPreviousVersion={onPreviousVersion}
+      onNextVersion={onNextVersion}
     />
   )
 }
