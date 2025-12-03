@@ -11,6 +11,7 @@ type Props = {
   items: PromptItem[]
   onJump: (id: string) => void
   onEdit: (id: string) => void
+  onCopy: (id: string) => void
   activeId?: string
   isOpen: boolean
   onToggle: () => void
@@ -22,6 +23,7 @@ export default function Sidebar({
   items,
   onJump,
   onEdit,
+  onCopy,
   activeId,
   isOpen,
   onToggle,
@@ -272,6 +274,17 @@ export default function Sidebar({
                   }}
                 >
                   Edit
+                </button>
+
+                <button
+                  type='button'
+                  class='badge badge--copy-button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCopy(p.id)
+                  }}
+                >
+                  Copy
                 </button>
               </div>
             </div>

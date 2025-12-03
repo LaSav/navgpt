@@ -163,6 +163,33 @@ function App({
     })
   }
 
+  const onCopy = async (id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item) return
+
+    const textToCopy = item.rawText || item.text
+    if (!textToCopy) return
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(textToCopy)
+      } else {
+        // Fallback: temporary textarea
+        const ta = document.createElement('textarea')
+        ta.value = textToCopy
+        ta.style.position = 'fixed'
+        ta.style.left = '-9999px'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      }
+    } catch (err) {
+      console.warn('[prompt-sidebar] Failed to copy prompt', err)
+    }
+  }
+
   const goToPromptByOffset = (direction: 1 | -1) => {
     if (!items.length) return
 
@@ -239,6 +266,7 @@ function App({
       onNextPrompt={handleNextPrompt}
       onPreviousPrompt={handlePreviousPrompt}
       onEdit={onEdit}
+      onCopy={onCopy}
     />
   )
 }

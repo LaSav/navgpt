@@ -3,6 +3,7 @@ import { uid } from '../util/id'
 export type PromptItem = {
   id: string
   text: string
+  rawText: string
   el: HTMLElement
   edits: number
   totalVersions: number
@@ -125,6 +126,7 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
     return {
       id,
       text: short,
+      rawText: text,
       el: scrollTarget,
       edits,
       totalVersions,
