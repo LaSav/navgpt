@@ -11,4 +11,4 @@ export const USER_MESSAGE_SELECTOR = [
 ].join(',')
 
 /** Where to anchor the sidebar. */
-export const CHAT_ROOT_SELECTOR = 'main, #__next, body'
+export const CHAT_ROOT_SELECTOR = 'main#main'

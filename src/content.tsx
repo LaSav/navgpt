@@ -99,10 +99,12 @@ function scrollSidebarActiveIntoView(
 function App({
   shadowMount,
   chatRoot,
+  header,
   originalPaddingRight,
 }: {
   shadowMount: HTMLElement
   chatRoot?: HTMLElement
+  header?: HTMLElement
   originalPaddingRight: string
 }) {
   const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
@@ -214,7 +216,6 @@ function App({
     if (btn.disabled || ariaDisabled === 'true') return
 
     btn.click()
-    // The MutationObserver will pick up the change and update currentVersion/totalVersions.
   }
 
   const onPreviousVersion = (id: string) => changeVersion(id, -1)
@@ -249,17 +250,31 @@ function App({
   const MINI_WIDTH = 66
 
   useEffect(() => {
-    if (!chatRoot) return
+    if (!chatRoot && !header) return
 
-    chatRoot.style.transition = chatRoot.style.transition
-      ? `${chatRoot.style.transition}, padding-right 0.18s ease-out`
-      : 'padding-right 0.18s ease-out'
+    const baseChatPadding = chatRoot
+      ? parseFloat(originalPaddingRight || '0') || 0
+      : 0
 
-    const base = parseFloat(originalPaddingRight || '0') || 0
     const extra = isOpen ? OPEN_WIDTH : MINI_WIDTH
 
-    chatRoot.style.paddingRight = `${base + extra}px`
-  }, [chatRoot, originalPaddingRight, isOpen])
+    if (chatRoot) {
+      chatRoot.style.transition = chatRoot.style.transition
+        ? `${chatRoot.style.transition}, padding-right 0.18s ease-out`
+        : 'padding-right 0.18s ease-out'
+
+      chatRoot.style.paddingRight = `${baseChatPadding + extra}px`
+    }
+
+    if (header) {
+      const headerStyles = getComputedStyle(header)
+      const originalHeaderPaddingRight =
+        parseFloat(headerStyles.paddingRight || '0') || 0
+
+      // Logical is nicer but paddingRight is fine here:
+      header.style.paddingRight = `${originalHeaderPaddingRight + extra}px`
+    }
+  }, [chatRoot, header, originalPaddingRight, isOpen])
 
   useEffect(() => {
     const rootNode = chatRoot ?? document
@@ -312,6 +327,8 @@ async function main() {
 
   const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR)
 
+  const header = document.getElementById('page-header') as HTMLElement | null
+
   let originalPaddingRight = '0px'
   if (chatRoot instanceof HTMLElement) {
     originalPaddingRight = getComputedStyle(chatRoot).paddingRight
@@ -321,6 +338,7 @@ async function main() {
     <App
       shadowMount={root.mount}
       chatRoot={chatRoot instanceof HTMLElement ? chatRoot : undefined}
+      header={header ?? undefined}
       originalPaddingRight={originalPaddingRight}
     />,
     root.mount

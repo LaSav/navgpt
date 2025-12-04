@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Prompt Nav",
+  "name": "NavGPT",
   "version": "0.1.0",
-  "description": "Navigate your prompt history in a side panel overlay for ChatGPT.",
+  "description": "Navigate your ChatGPT prompts with ease. A side panel that lists your conversation prompts so you can quickly jump, copy, or edit without scrolling.",
   "host_permissions": ["https://chat.openai.com/*", "https://chatgpt.com/*"],
   "content_scripts": [
     {
