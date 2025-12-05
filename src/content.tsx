@@ -99,13 +99,13 @@ function scrollSidebarActiveIntoView(
 function App({
   shadowMount,
   chatRoot,
-  header,
-  originalPaddingRight,
+  layoutRoot,
+  originalLayoutPaddingRight,
 }: {
   shadowMount: HTMLElement
   chatRoot?: HTMLElement
-  header?: HTMLElement
-  originalPaddingRight: string
+  layoutRoot?: HTMLElement
+  originalLayoutPaddingRight: string
 }) {
   const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
@@ -250,31 +250,17 @@ function App({
   const MINI_WIDTH = 66
 
   useEffect(() => {
-    if (!chatRoot && !header) return
-
-    const baseChatPadding = chatRoot
-      ? parseFloat(originalPaddingRight || '0') || 0
-      : 0
+    if (!layoutRoot) return
 
     const extra = isOpen ? OPEN_WIDTH : MINI_WIDTH
+    const base = parseFloat(originalLayoutPaddingRight || '0') || 0
 
-    if (chatRoot) {
-      chatRoot.style.transition = chatRoot.style.transition
-        ? `${chatRoot.style.transition}, padding-right 0.18s ease-out`
-        : 'padding-right 0.18s ease-out'
+    layoutRoot.style.transition = layoutRoot.style.transition
+      ? `${layoutRoot.style.transition}, padding-right 0.18s ease-out`
+      : 'padding-right 0.18s ease-out'
 
-      chatRoot.style.paddingRight = `${baseChatPadding + extra}px`
-    }
-
-    if (header) {
-      const headerStyles = getComputedStyle(header)
-      const originalHeaderPaddingRight =
-        parseFloat(headerStyles.paddingRight || '0') || 0
-
-      // Logical is nicer but paddingRight is fine here:
-      header.style.paddingRight = `${originalHeaderPaddingRight + extra}px`
-    }
-  }, [chatRoot, header, originalPaddingRight, isOpen])
+    layoutRoot.style.paddingRight = `${base + extra}px`
+  }, [layoutRoot, originalLayoutPaddingRight, isOpen])
 
   useEffect(() => {
     const rootNode = chatRoot ?? document
@@ -325,21 +311,31 @@ async function main() {
   const detachThemeSync = attachThemeSync(root.host)
   await loadStyles(root.shadow)
 
-  const chatRoot = document.querySelector(CHAT_ROOT_SELECTOR)
+  const mainEl = document.getElementById('main') as HTMLElement | null
 
-  const header = document.getElementById('page-header') as HTMLElement | null
+  // Inner chat container (for observePrompts, etc.)
+  const chatRoot =
+    mainEl?.closest<HTMLElement>('[class*="container/main"]') ??
+    mainEl ??
+    undefined
 
-  let originalPaddingRight = '0px'
-  if (chatRoot instanceof HTMLElement) {
-    originalPaddingRight = getComputedStyle(chatRoot).paddingRight
+  // Outer app shell that actually spans the full viewport
+  const layoutRoot =
+    mainEl?.closest<HTMLElement>('.flex.h-screen') ??
+    mainEl?.closest<HTMLElement>('.flex.h-screen.w-screen') ??
+    undefined
+
+  let originalLayoutPaddingRight = '0px'
+  if (layoutRoot instanceof HTMLElement) {
+    originalLayoutPaddingRight = getComputedStyle(layoutRoot).paddingRight
   }
 
   render(
     <App
       shadowMount={root.mount}
       chatRoot={chatRoot instanceof HTMLElement ? chatRoot : undefined}
-      header={header ?? undefined}
-      originalPaddingRight={originalPaddingRight}
+      layoutRoot={layoutRoot instanceof HTMLElement ? layoutRoot : undefined}
+      originalLayoutPaddingRight={originalLayoutPaddingRight}
     />,
     root.mount
   )
