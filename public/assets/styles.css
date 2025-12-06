@@ -2,6 +2,7 @@
    BASE THEME TOKENS (LIGHT DEFAULT)
 ---------------------------------------- */
 :host {
+  all: initial;
   --text-sm: 0.875rem;
 
   --bg-primary: #f9f9f9;

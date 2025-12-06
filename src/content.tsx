@@ -3,7 +3,50 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import Sidebar from './ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
-import { CHAT_ROOT_SELECTOR } from './dom/selectors'
+
+function findLayoutRoot(): HTMLElement {
+  const header =
+    document.querySelector<HTMLElement>('#page-header') ||
+    document.querySelector<HTMLElement>('[data-testid="top-bar"]') ||
+    document.querySelector<HTMLElement>('header')
+
+  const main =
+    document.querySelector<HTMLElement>('#main') ||
+    document.querySelector<HTMLElement>('main')
+
+  if (!header || !main) {
+    return document.body
+  }
+
+  // Collect ancestor chains up to but NOT including <body>/<html>
+  const chain = (el: HTMLElement) => {
+    const result: HTMLElement[] = []
+    for (
+      let node: HTMLElement | null = el;
+      node && node !== document.body && node !== document.documentElement;
+      node = node.parentElement
+    ) {
+      result.push(node)
+    }
+    return result
+  }
+
+  const headerChain = chain(header) // [header, @container/main, ..., outer flex]
+  const mainChain = chain(main) // [main,   @container/main, ..., outer flex]
+
+  const mainSet = new Set(mainChain)
+
+  // 🔑 Walk headerChain from the TOP (closest to <body>) backward,
+  // so the first match is the HIGHEST common ancestor.
+  for (let i = headerChain.length - 1; i >= 0; i--) {
+    const candidate = headerChain[i]
+    if (mainSet.has(candidate)) {
+      return candidate
+    }
+  }
+
+  return document.body
+}
 
 // Load CSS into the shadow root
 async function loadStyles(shadow: ShadowRoot) {
@@ -23,13 +66,17 @@ async function loadStyles(shadow: ShadowRoot) {
 // Shadow root mount
 function mountSidebar() {
   if (document.getElementById('prompt-sidebar-root')) return null
+
   const host = document.createElement('div')
   host.id = 'prompt-sidebar-root'
-  host.style.all = 'initial'
-  document.documentElement.appendChild(host)
+
+  document.body.appendChild(host)
+
   const shadow = host.attachShadow({ mode: 'open' })
   const mount = document.createElement('div')
+  mount.id = 'prompt-sidebar-mount'
   shadow.appendChild(mount)
+
   return { host, shadow, mount }
 }
 
@@ -313,17 +360,13 @@ async function main() {
 
   const mainEl = document.getElementById('main') as HTMLElement | null
 
-  // Inner chat container (for observePrompts, etc.)
+  // Chat root for your prompt observation logic
   const chatRoot =
     mainEl?.closest<HTMLElement>('[class*="container/main"]') ??
     mainEl ??
     undefined
 
-  // Outer app shell that actually spans the full viewport
-  const layoutRoot =
-    mainEl?.closest<HTMLElement>('.flex.h-screen') ??
-    mainEl?.closest<HTMLElement>('.flex.h-screen.w-screen') ??
-    undefined
+  const layoutRoot = findLayoutRoot()
 
   let originalLayoutPaddingRight = '0px'
   if (layoutRoot instanceof HTMLElement) {
