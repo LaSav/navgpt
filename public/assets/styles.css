@@ -263,7 +263,9 @@
 }
 
 .header-toggle {
-  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   cursor: ew-resize;

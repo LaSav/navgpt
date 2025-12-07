@@ -106,7 +106,7 @@ export default function Sidebar({
               onClick={onToggle}
               aria-label='Expand prompt history'
             >
-              <MenuIcon size={22} />
+              <MenuIcon size={18} />
             </button>
           </Tooltip>
         </div>
@@ -207,7 +207,7 @@ export default function Sidebar({
               onClick={onToggle}
               aria-label='Collapse prompt history'
             >
-              <MenuIcon size={22} />
+              <MenuIcon size={18} />
             </button>
           </Tooltip>
         </div>
