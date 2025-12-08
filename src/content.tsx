@@ -31,13 +31,11 @@ function findLayoutRoot(): HTMLElement {
     return result
   }
 
-  const headerChain = chain(header) // [header, @container/main, ..., outer flex]
-  const mainChain = chain(main) // [main,   @container/main, ..., outer flex]
+  const headerChain = chain(header)
+  const mainChain = chain(main)
 
   const mainSet = new Set(mainChain)
 
-  // 🔑 Walk headerChain from the TOP (closest to <body>) backward,
-  // so the first match is the HIGHEST common ancestor.
   for (let i = headerChain.length - 1; i >= 0; i--) {
     const candidate = headerChain[i]
     if (mainSet.has(candidate)) {
