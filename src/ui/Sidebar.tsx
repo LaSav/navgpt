@@ -57,21 +57,6 @@ export default function Sidebar({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const tag = target?.tagName
-      const isTyping =
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        (target && target.isContentEditable)
-
-      if (isTyping) return
-
-      if (e.altKey && (e.key === 'h' || e.key === 'H')) {
-        e.preventDefault()
-        onToggle()
-        return
-      }
-
       if (e.altKey && e.key === 'ArrowUp') {
         if (!canGoPrevious) return
         e.preventDefault()
