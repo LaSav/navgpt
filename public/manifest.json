@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NavGPT",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Navigate your ChatGPT prompts with ease. A side panel that lists your conversation prompts so you can quickly jump, copy, or edit without scrolling.",
   "icons": {
     "16": "icons/icon16.png",
