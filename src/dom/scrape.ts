@@ -67,12 +67,12 @@ function inferLangFrom(el: Element): string | undefined {
 }
 
 function detectCodeInArticle(article: HTMLElement, rawText: string) {
-  const preCodes = Array.from(article.querySelectorAll('pre code'))
-  if (preCodes.length) {
+  const firstPreCode = article.querySelector('pre code')
+  if (firstPreCode) {
     const lang =
-      inferLangFrom(preCodes[0]) ||
-      (preCodes[0].parentElement
-        ? inferLangFrom(preCodes[0].parentElement!)
+      inferLangFrom(firstPreCode) ||
+      (firstPreCode.parentElement
+        ? inferLangFrom(firstPreCode.parentElement)
         : undefined)
     return { hasCode: true, codeLang: lang }
   }
@@ -114,12 +114,12 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       const bubble = article.querySelector<HTMLElement>(
         '[data-message-author-role="user"]'
       )
-      text = bubble?.textContent || bubble?.innerText || ''
+      text = bubble?.textContent || ''
       if (bubble) scrollTarget = bubble
     }
 
     const { currentVersion, totalVersions, edits } = parseRevisionInfo(article)
-    const short = summarize(text, 2000)
+    const short = summarize(text, 360)
 
     const { hasCode, codeLang } = detectCodeInArticle(article, text)
 
@@ -213,12 +213,20 @@ export function observePrompts(
     const items = scrapePrompts(root)
 
     const signature = items
-      .map(
-        (i) =>
-          `${i.id}|${i.edits}|${i.currentVersion}|${i.totalVersions}|${
-            i.text
-          }|${i.isEditing ? 1 : 0}|${i.hasCode ? 1 : 0}|${i.codeLang ?? ''}`
-      )
+      .map((i) => {
+        const t = i.rawText || i.text || ''
+        return [
+          i.id,
+          i.edits,
+          i.currentVersion,
+          i.totalVersions,
+          i.isEditing ? 1 : 0,
+          i.hasCode ? 1 : 0,
+          i.codeLang ?? '',
+          t.length,
+          t.slice(0, 80), // cheap “content fingerprint”
+        ].join('|')
+      })
       .join('||')
 
     if (signature === lastSignature) return
@@ -227,10 +235,7 @@ export function observePrompts(
     onUpdate(items)
   }
 
-  const settle = (fn: () => void) =>
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => requestAnimationFrame(fn))
-    )
+  const settle = (fn: () => void) => requestAnimationFrame(fn)
 
   let scheduled = false
   const schedule = () => {
@@ -256,7 +261,14 @@ export function observePrompts(
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['class', 'data-state', 'data-writing-block'],
+    attributeFilter: [
+      'class',
+      'disabled',
+      'aria-disabled',
+      'aria-label',
+      'data-state',
+      'data-writing-block',
+    ],
     characterData: false,
   })
 
