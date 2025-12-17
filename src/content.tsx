@@ -78,7 +78,6 @@ function mountSidebar() {
   return { host, shadow, mount }
 }
 
-// Find real scroller
 function getScrollParent(node: HTMLElement): HTMLElement {
   for (
     let p = node.parentElement as HTMLElement | null;
@@ -91,30 +90,64 @@ function getScrollParent(node: HTMLElement): HTMLElement {
   return (document.scrollingElement as HTMLElement) || document.documentElement
 }
 
-function getStickyOffsetWithin(scroller: HTMLElement): number {
-  const cs = getComputedStyle(scroller)
-  const varVal = cs.getPropertyValue('--header-height').trim()
-  const fromVar = varVal ? parseFloat(varVal) : 0
-  if (fromVar) return fromVar
-  const header = scroller.querySelector<HTMLElement>(
-    'header, nav, [data-testid="top-bar"]'
-  )
-  return header ? header.getBoundingClientRect().height : 0
-}
+function snapToPrompt(targetEl: HTMLElement) {
+  const article =
+    (targetEl.closest('article[data-turn="user"]') as HTMLElement | null) ??
+    targetEl
+  if (!article.isConnected) return
 
-function snapToPrompt(el: HTMLElement) {
-  const scroller = getScrollParent(el)
-  const offset = getStickyOffsetWithin(scroller) + 16
-  const e = el.getBoundingClientRect()
-  const s = scroller.getBoundingClientRect()
-  const target = scroller.scrollTop + (e.top - s.top) - offset
-  scroller.scrollTop = target
-  requestAnimationFrame(() => {
-    const e2 = el.getBoundingClientRect()
-    const s2 = scroller.getBoundingClientRect()
-    const residual = e2.top - s2.top - offset
-    if (Math.abs(residual) > 1) scroller.scrollTop += residual
+  const scroller = getScrollParent(article)
+
+  // 1) Coarse jump: let the browser do the heavy lifting (virtualization/layout will catch up)
+  article.scrollIntoView({
+    block: 'start',
+    inline: 'nearest',
+    behavior: 'instant' as ScrollBehavior,
   })
+
+  // 2) After layout settles, apply a *small* smooth correction (no second snap)
+  let frames = 0
+  let lastTop: number | null = null
+  let stable = 0
+
+  const maxFrames = 12
+  const stableEps = 0.5
+  const minCorrectPx = 14 // don’t bother for tiny drift
+
+  const refine = () => {
+    if (!article.isConnected) return
+
+    const top = article.getBoundingClientRect().top
+
+    if (lastTop !== null && Math.abs(top - lastTop) < stableEps) stable++
+    else stable = 0
+    lastTop = top
+
+    if (stable >= 2 || frames >= maxFrames) {
+      // We want the article near the top of the viewport; no header math here—
+      // just correct whatever drift happened after the first jump.
+      const rect = article.getBoundingClientRect()
+      const viewportTop =
+        scroller === document.scrollingElement
+          ? 0
+          : scroller.getBoundingClientRect().top
+
+      const delta = rect.top - viewportTop
+
+      if (Math.abs(delta) > minCorrectPx) {
+        scroller.scrollBy({
+          top: delta,
+          behavior: 'smooth',
+        })
+      }
+      return
+    }
+
+    frames++
+    requestAnimationFrame(refine)
+  }
+
+  requestAnimationFrame(() => requestAnimationFrame(refine))
 }
 
 // Keep active sidebar item visible (when you click to jump)

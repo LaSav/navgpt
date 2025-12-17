@@ -320,9 +320,14 @@ export default function Sidebar({
           <span class='footer--meta'>
             {items.length} prompt{items.length === 1 ? '' : 's'}
           </span>
-          <span class='footer--meta' style={{ marginLeft: 'auto' }}>
+          <a
+            class='footer--meta'
+            href='https://savvalambin.com/blog/navgpt/#feedback'
+            target='_blank'
+            rel='noreferrer'
+          >
             Feedback
-          </span>
+          </a>
         </div>
       </div>
     </>

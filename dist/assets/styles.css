@@ -485,4 +485,5 @@ TOOLTIP
   gap: 0.5rem;
   color: var(--text-secondary);
   flex-shrink: 0;
+  justify-content: space-between;
 }
