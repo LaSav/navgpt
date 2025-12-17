@@ -330,14 +330,27 @@ function App({
   useEffect(() => {
     if (!layoutRoot) return
 
+    // Save previous inline styles so we can restore exactly what we touched.
+    const prevPaddingRight = layoutRoot.style.paddingRight
+    const prevTransition = layoutRoot.style.transition
+
     const extra = isOpen ? OPEN_WIDTH : MINI_WIDTH
     const base = parseFloat(originalLayoutPaddingRight || '0') || 0
 
-    layoutRoot.style.transition = layoutRoot.style.transition
-      ? `${layoutRoot.style.transition}, padding-right 0.18s ease-out`
-      : 'padding-right 0.18s ease-out'
+    // Add padding-right transition once (avoid string growth).
+    const t = prevTransition || ''
+    if (!t.includes('padding-right')) {
+      layoutRoot.style.transition = t
+        ? `${t}, padding-right 0.18s ease-out`
+        : 'padding-right 0.18s ease-out'
+    }
 
     layoutRoot.style.paddingRight = `${base + extra}px`
+
+    return () => {
+      layoutRoot.style.paddingRight = prevPaddingRight
+      layoutRoot.style.transition = prevTransition
+    }
   }, [layoutRoot, originalLayoutPaddingRight, isOpen])
 
   useEffect(() => {
@@ -387,6 +400,18 @@ async function main() {
   if (!root) return
 
   const detachThemeSync = attachThemeSync(root.host)
+
+  const hostRemovalObserver = new MutationObserver(() => {
+    if (!document.contains(root.host)) {
+      detachThemeSync()
+      hostRemovalObserver.disconnect()
+    }
+  })
+  hostRemovalObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  })
+
   await loadStyles(root.shadow)
 
   const mainEl = document.getElementById('main') as HTMLElement | null
