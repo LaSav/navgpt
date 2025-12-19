@@ -13,7 +13,6 @@ export type PromptItem = {
   codeLang?: string
 }
 
-/** Single-line summary or generous preview (clamped by CSS in sidebar). */
 function summarize(text: string, max = 2000): string {
   const oneLine = text.replace(/\s+/g, ' ').trim()
   return oneLine.length > max ? oneLine.slice(0, max - 1) + '…' : oneLine
@@ -224,7 +223,7 @@ export function observePrompts(
           i.hasCode ? 1 : 0,
           i.codeLang ?? '',
           t.length,
-          t.slice(0, 80), // cheap “content fingerprint”
+          t.slice(0, 80),
         ].join('|')
       })
       .join('||')

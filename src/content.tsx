@@ -112,7 +112,7 @@ function snapToPrompt(targetEl: HTMLElement) {
 
   const maxFrames = 12
   const stableEps = 0.5
-  const minCorrectPx = 14 // don’t bother for tiny drift
+  const minCorrectPx = 14
 
   const refine = () => {
     if (!article.isConnected) return
@@ -124,8 +124,6 @@ function snapToPrompt(targetEl: HTMLElement) {
     lastTop = top
 
     if (stable >= 2 || frames >= maxFrames) {
-      // We want the article near the top of the viewport; no header math here—
-      // just correct whatever drift happened after the first jump.
       const rect = article.getBoundingClientRect()
       const viewportTop =
         scroller === document.scrollingElement
@@ -330,14 +328,12 @@ function App({
   useEffect(() => {
     if (!layoutRoot) return
 
-    // Save previous inline styles so we can restore exactly what we touched.
     const prevPaddingRight = layoutRoot.style.paddingRight
     const prevTransition = layoutRoot.style.transition
 
     const extra = isOpen ? OPEN_WIDTH : MINI_WIDTH
     const base = parseFloat(originalLayoutPaddingRight || '0') || 0
 
-    // Add padding-right transition once (avoid string growth).
     const t = prevTransition || ''
     if (!t.includes('padding-right')) {
       layoutRoot.style.transition = t
