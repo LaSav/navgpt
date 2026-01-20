@@ -1,6 +1,6 @@
-import { useEffect } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import type { PromptItem } from '../dom/scrape'
-import { MenuIcon } from './icons/MenuIcon'
+import { Navgpt } from './icons/Navgpt'
 import { ArrowUp } from './icons/ArrowUp'
 import { ArrowDown } from './icons/ArrowDown'
 import { Code } from './icons/Code'
@@ -9,6 +9,10 @@ import { Edit } from './icons/Edit'
 import { Copy } from './icons/Copy'
 import { ArrowLeft } from './icons/ArrowLeft'
 import { ArrowRight } from './icons/ArrowRight'
+import { ProPanel } from './ProPanel'
+import { Settings } from './icons/Settings'
+import { Back } from './icons/Back'
+import { Collapse } from './icons/Collapse'
 
 type Props = {
   items: PromptItem[]
@@ -24,6 +28,8 @@ type Props = {
   onPreviousPrompt: () => void
 }
 
+type View = 'history' | 'settings'
+
 export default function Sidebar({
   items,
   onJump,
@@ -38,25 +44,48 @@ export default function Sidebar({
   onPreviousPrompt,
 }: Props) {
   const panelId = 'prompt-history-sidebar'
+  const [view, setView] = useState<View>('history')
 
   const hasItems = items.length > 0
   const currentIndex = activeId ? items.findIndex((i) => i.id === activeId) : -1
 
-  let canGoPrevious = false
-  let canGoNext = false
+  const { canGoPrevious, canGoNext } = useMemo(() => {
+    let canGoPrevious = false
+    let canGoNext = false
 
-  if (hasItems) {
-    if (currentIndex === -1) {
-      canGoPrevious = true
-      canGoNext = false
-    } else {
-      canGoPrevious = currentIndex > 0
-      canGoNext = currentIndex < items.length - 1
+    if (hasItems) {
+      if (currentIndex === -1) {
+        canGoPrevious = true
+        canGoNext = false
+      } else {
+        canGoPrevious = currentIndex > 0
+        canGoNext = currentIndex < items.length - 1
+      }
     }
+
+    return { canGoPrevious, canGoNext }
+  }, [hasItems, currentIndex])
+
+  const openSettings = () => {
+    setView('settings')
+    if (!isOpen) onToggle()
   }
+
+  const openHistory = () => {
+    setView('history')
+    if (!isOpen) onToggle()
+  }
+
+  // Optional: when the sidebar closes, return to history view
+  useEffect(() => {
+    if (!isOpen) setView('history')
+  }, [isOpen])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // only allow prompt navigation while in history view
+      if (view !== 'history') return
+
       if (e.altKey && e.key === 'ArrowUp') {
         if (!canGoPrevious) return
         e.preventDefault()
@@ -74,7 +103,7 @@ export default function Sidebar({
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onToggle, onNextPrompt, onPreviousPrompt, canGoNext, canGoPrevious])
+  }, [view, onNextPrompt, onPreviousPrompt, canGoNext, canGoPrevious])
 
   return (
     <>
@@ -88,10 +117,10 @@ export default function Sidebar({
             <button
               type='button'
               class='sidebar-mini__button sidebar-mini__button--primary'
-              onClick={onToggle}
+              onClick={openHistory}
               aria-label='Expand prompt history'
             >
-              <MenuIcon size={18} />
+              <Navgpt size={20} />
             </button>
           </Tooltip>
         </div>
@@ -135,6 +164,17 @@ export default function Sidebar({
             <ArrowDown size={18} />
           </button>
         </Tooltip>
+
+        <Tooltip placement='left' label='Settings'>
+          <button
+            type='button'
+            class='sidebar-mini__button'
+            onClick={openSettings}
+            aria-label='Open settings'
+          >
+            <Settings size={18} />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Full panel */}
@@ -145,45 +185,84 @@ export default function Sidebar({
         aria-label='Prompt history'
       >
         <div class='header'>
-          <div class='title'>Prompts</div>
-
-          <Tooltip
-            label={
+          <div class='title'>
+            {view === 'history' ? (
               <>
-                <span class='tooltip-text'>Previous prompt</span>
-                <span class='tooltip-shortcut'>⌥↑</span>
+                <span>Prompts</span>
+                <Navgpt size={18} />
               </>
-            }
-          >
-            <button
-              type='button'
-              class='header-iconButton'
-              onClick={onPreviousPrompt}
-              aria-label='Previous prompt'
-              disabled={!canGoPrevious}
-            >
-              <ArrowUp size={18} />
-            </button>
-          </Tooltip>
-
-          <Tooltip
-            label={
+            ) : (
               <>
-                <span class='tooltip-text'>Next prompt</span>
-                <span class='tooltip-shortcut'>⌥↓</span>
+                <span>Settings</span>
+                <Settings size={18} />
               </>
-            }
-          >
-            <button
-              type='button'
-              class='header-iconButton'
-              onClick={onNextPrompt}
-              aria-label='Next prompt'
-              disabled={!canGoNext}
-            >
-              <ArrowDown size={18} />
-            </button>
-          </Tooltip>
+            )}
+          </div>
+
+          {/* Left side controls differ by view */}
+          {view === 'history' ? (
+            <>
+              <Tooltip
+                label={
+                  <>
+                    <span class='tooltip-text'>Previous prompt</span>
+                    <span class='tooltip-shortcut'>⌥↑</span>
+                  </>
+                }
+              >
+                <button
+                  type='button'
+                  class='header-iconButton'
+                  onClick={onPreviousPrompt}
+                  aria-label='Previous prompt'
+                  disabled={!canGoPrevious}
+                >
+                  <ArrowUp size={18} />
+                </button>
+              </Tooltip>
+
+              <Tooltip
+                label={
+                  <>
+                    <span class='tooltip-text'>Next prompt</span>
+                    <span class='tooltip-shortcut'>⌥↓</span>
+                  </>
+                }
+              >
+                <button
+                  type='button'
+                  class='header-iconButton'
+                  onClick={onNextPrompt}
+                  aria-label='Next prompt'
+                  disabled={!canGoNext}
+                >
+                  <ArrowDown size={18} />
+                </button>
+              </Tooltip>
+
+              <Tooltip label='Settings'>
+                <button
+                  type='button'
+                  class='header-iconButton'
+                  onClick={() => setView('settings')}
+                  aria-label='Open settings'
+                >
+                  <Settings size={18} />
+                </button>
+              </Tooltip>
+            </>
+          ) : (
+            <Tooltip label='Back'>
+              <button
+                type='button'
+                class='header-iconButton'
+                onClick={() => setView('history')}
+                aria-label='Back to prompts'
+              >
+                <Back size={18} />
+              </button>
+            </Tooltip>
+          )}
 
           <Tooltip label='Close'>
             <button
@@ -192,143 +271,153 @@ export default function Sidebar({
               onClick={onToggle}
               aria-label='Collapse prompt history'
             >
-              <MenuIcon size={18} />
+              <Collapse size={20} />
             </button>
           </Tooltip>
         </div>
 
-        <div class='list'>
-          {items.length === 0 && (
-            <div style={{ opacity: 0.7, padding: '.6rem' }}>
-              No prompts found.
-            </div>
-          )}
+        {/* Body switches by view */}
+        {view === 'history' ? (
+          <>
+            <div class='list'>
+              {items.length === 0 && (
+                <div style={{ opacity: 0.7, padding: '.6rem' }}>
+                  No prompts found.
+                </div>
+              )}
 
-          {items.map((p, idx) => {
-            const canPrevVersion = p.currentVersion > 1
-            const canNextVersion = p.currentVersion < p.totalVersions
+              {items.map((p, idx) => {
+                const canPrevVersion = p.currentVersion > 1
+                const canNextVersion = p.currentVersion < p.totalVersions
 
-            return (
-              <div
-                key={p.id}
-                data-prompt-id={p.id}
-                class={`item ${activeId === p.id ? 'item--active' : ''}`}
-                role='button'
-                tabIndex={0}
-                onClick={() => onJump(p.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    onJump(p.id)
-                  }
-                }}
-              >
-                <div class='item-meta'>
-                  <span class='meta--index'>{idx + 1}</span>
-
-                  {p.hasCode && (
-                    <span
-                      class='badge'
-                      title={
-                        p.codeLang
-                          ? `Contains code (${p.codeLang})`
-                          : 'Contains code'
+                return (
+                  <div
+                    key={p.id}
+                    data-prompt-id={p.id}
+                    class={`item ${activeId === p.id ? 'item--active' : ''}`}
+                    role='button'
+                    tabIndex={0}
+                    onClick={() => onJump(p.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onJump(p.id)
                       }
-                    >
-                      {p.codeLang ? p.codeLang : <Code size={11} />}
-                    </span>
-                  )}
-                </div>
-
-                <div class='text-row'>
-                  <div class='text'>{p.text}</div>
-                </div>
-
-                <div class='item-footer'>
-                  <button
-                    type='button'
-                    class='badge__button'
-                    aria-label='Copy Prompt'
-                    title='Copy prompt'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onCopy(p.id)
                     }}
                   >
-                    <Copy size={12} />
-                  </button>
-                  {p.edits > 0 && (
-                    <div class='edits-controls'>
-                      <span class='badge badge--edits'>
-                        <button
-                          type='button'
-                          class='badge__button'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onPreviousVersion(p.id)
-                          }}
-                          disabled={!canPrevVersion}
-                          aria-label='Previous edit version'
-                        >
-                          <ArrowLeft />
-                        </button>
+                    <div class='item-meta'>
+                      <span class='meta--index'>{idx + 1}</span>
+
+                      {p.hasCode && (
                         <span
-                          class='badge-text'
-                          title={`${p.totalVersions} edits`}
+                          class='badge'
+                          title={
+                            p.codeLang
+                              ? `Contains code (${p.codeLang})`
+                              : 'Contains code'
+                          }
                         >
-                          {p.currentVersion} / {p.totalVersions}
+                          {p.codeLang ? p.codeLang : <Code size={11} />}
                         </span>
-                        <button
-                          type='button'
-                          class='badge__button'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onNextVersion(p.id)
-                          }}
-                          disabled={!canNextVersion}
-                          aria-label='Next edit version'
-                        >
-                          <ArrowRight />
-                        </button>
-                      </span>
+                      )}
                     </div>
-                  )}
 
-                  {p.isEditing && (
-                    <span class='badge badge--editing'>editing</span>
-                  )}
+                    <div class='text-row'>
+                      <div class='text'>{p.text}</div>
+                    </div>
 
-                  <button
-                    type='button'
-                    class='badge__button'
-                    aria-label='Edit Prompt'
-                    title='Edit prompt'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEdit(p.id)
-                    }}
-                  >
-                    <Edit size={12} />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                    <div class='item-footer'>
+                      <button
+                        type='button'
+                        class='badge__button'
+                        aria-label='Copy Prompt'
+                        title='Copy prompt'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onCopy(p.id)
+                        }}
+                      >
+                        <Copy size={12} />
+                      </button>
 
-        <div class='footer'>
-          <span class='footer--meta'>
-            {items.length} prompt{items.length === 1 ? '' : 's'}
-          </span>
-          <a
-            class='footer--meta'
-            href='https://savvalambin.com/blog/navgpt/#feedback'
-            target='_blank'
-            rel='noreferrer'
-          >
-            Feedback
-          </a>
-        </div>
+                      {p.edits > 0 && (
+                        <div class='edits-controls'>
+                          <span class='badge badge--edits'>
+                            <button
+                              type='button'
+                              class='badge__button'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onPreviousVersion(p.id)
+                              }}
+                              disabled={!canPrevVersion}
+                              aria-label='Previous edit version'
+                            >
+                              <ArrowLeft />
+                            </button>
+                            <span
+                              class='badge-text'
+                              title={`${p.totalVersions} edits`}
+                            >
+                              {p.currentVersion} / {p.totalVersions}
+                            </span>
+                            <button
+                              type='button'
+                              class='badge__button'
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onNextVersion(p.id)
+                              }}
+                              disabled={!canNextVersion}
+                              aria-label='Next edit version'
+                            >
+                              <ArrowRight />
+                            </button>
+                          </span>
+                        </div>
+                      )}
+
+                      {p.isEditing && (
+                        <span class='badge badge--editing'>editing</span>
+                      )}
+
+                      <button
+                        type='button'
+                        class='badge__button'
+                        aria-label='Edit Prompt'
+                        title='Edit prompt'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEdit(p.id)
+                        }}
+                      >
+                        <Edit size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div class='footer'>
+              <span class='footer--meta'>
+                {items.length} prompt{items.length === 1 ? '' : 's'}
+              </span>
+              <a
+                class='footer--meta'
+                href='https://navgpt.app/contact'
+                target='_blank'
+                rel='noreferrer'
+              >
+                Support
+              </a>
+            </div>
+          </>
+        ) : (
+          <div class='settings-view' style={{ padding: '.75rem' }}>
+            <ProPanel />
+          </div>
+        )}
       </div>
     </>
   )

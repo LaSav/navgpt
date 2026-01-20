@@ -78,6 +78,27 @@ function mountSidebar() {
   return { host, shadow, mount }
 }
 
+async function getEntitlement(forceValidate = false) {
+  const r = await chrome.runtime.sendMessage({
+    type: 'NAVGPT_VALIDATE',
+    force: forceValidate,
+  })
+  return r.state
+}
+
+async function requirePro(): Promise<boolean> {
+  const state = await getEntitlement(false)
+  if (state?.proAllowed) return true
+
+  // Optional: force validation on gate
+  const state2 = await getEntitlement(true)
+  if (state2?.proAllowed) return true
+
+  // Trust-first UX: just inform; don’t hard-block your whole extension unless you want to.
+  alert('This feature requires NavGPT Pro. Upgrade or enter a license key.')
+  return false
+}
+
 function getScrollParent(node: HTMLElement): HTMLElement {
   for (
     let p = node.parentElement as HTMLElement | null;
@@ -151,12 +172,12 @@ function snapToPrompt(targetEl: HTMLElement) {
 // Keep active sidebar item visible (when you click to jump)
 function scrollSidebarActiveIntoView(
   shadowMount: HTMLElement,
-  activeId?: string
+  activeId?: string,
 ) {
   if (!activeId) return
   const list = shadowMount.querySelector('.list') as HTMLElement | null
   const btn = shadowMount.querySelector<HTMLElement>(
-    `.item[data-prompt-id="${CSS.escape(activeId)}"]`
+    `.item[data-prompt-id="${CSS.escape(activeId)}"]`,
   )
   if (!list || !btn) return
   const b = btn.getBoundingClientRect()
@@ -188,7 +209,7 @@ function App({
   const [isOpen, setIsOpen] = useState(true)
 
   const scrollerRef = useRef<HTMLElement | null>(
-    items[0]?.el ? getScrollParent(items[0].el) : null
+    items[0]?.el ? getScrollParent(items[0].el) : null,
   )
 
   const onJump = (id: string) => {
@@ -228,7 +249,7 @@ function App({
 
     const editButton =
       article.querySelector<HTMLButtonElement>(
-        'button[aria-label="Edit message"]'
+        'button[aria-label="Edit message"]',
       ) ||
       article.querySelector<HTMLButtonElement>('button[aria-label^="Edit"]')
 
@@ -432,7 +453,7 @@ async function main() {
       layoutRoot={layoutRoot instanceof HTMLElement ? layoutRoot : undefined}
       originalLayoutPaddingRight={originalLayoutPaddingRight}
     />,
-    root.mount
+    root.mount,
   )
 
   window.addEventListener('unload', () => {

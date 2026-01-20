@@ -1,4 +1,4 @@
-export function MenuIcon({ size = 16 }: { size?: number }) {
+export function Navgpt({ size = 16 }: { size?: number }) {
   return (
     <svg
       width={size}
