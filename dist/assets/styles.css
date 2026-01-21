@@ -329,7 +329,6 @@
   position: fixed;
   top: 0;
   right: 0;
-  width: 52px;
   height: 100vh;
   z-index: 10;
   display: flex;
@@ -337,10 +336,12 @@
   align-items: center;
   justify-content: flex-start;
   background-color: transparent;
-  border-left: 1px solid var(--border-color);
   opacity: 1;
-  padding: 0rem 6px 0rem 6px;
   gap: 0.35rem;
+  box-sizing: border-box;
+  width: 52px;
+  padding: 0 6px;
+  border-left: 1px solid var(--border-color);
 }
 
 .sidebar-mini--hidden {

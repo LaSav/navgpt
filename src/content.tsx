@@ -358,8 +358,8 @@ function App({
   const handleNextPrompt = () => goToPromptByOffset(1)
   const handlePreviousPrompt = () => goToPromptByOffset(-1)
 
-  const OPEN_WIDTH = 330
-  const MINI_WIDTH = 66
+  const OPEN_WIDTH = 320
+  const MINI_WIDTH = 52
 
   useEffect(() => {
     if (!layoutRoot) return
