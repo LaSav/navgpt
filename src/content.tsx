@@ -46,6 +46,20 @@ function findLayoutRoot(): HTMLElement {
   return document.body
 }
 
+function getTopOverlayOffset(): number {
+  const header =
+    document.querySelector<HTMLElement>('#page-header') ||
+    document.querySelector<HTMLElement>('[data-testid="top-bar"]') ||
+    document.querySelector<HTMLElement>('header')
+
+  if (!header) return 0
+
+  const pos = getComputedStyle(header).position
+  if (pos !== 'sticky' && pos !== 'fixed') return 0
+
+  return header.getBoundingClientRect().height
+}
+
 // Load CSS into the shadow root
 async function loadStyles(shadow: ShadowRoot) {
   try {
@@ -139,6 +153,7 @@ function snapToPrompt(targetEl: HTMLElement) {
     if (!article.isConnected) return
 
     const top = article.getBoundingClientRect().top
+    const overlay = getTopOverlayOffset()
 
     if (lastTop !== null && Math.abs(top - lastTop) < stableEps) stable++
     else stable = 0
@@ -151,7 +166,7 @@ function snapToPrompt(targetEl: HTMLElement) {
           ? 0
           : scroller.getBoundingClientRect().top
 
-      const delta = rect.top - viewportTop
+      const delta = rect.top - viewportTop - overlay
 
       if (Math.abs(delta) > minCorrectPx) {
         scroller.scrollBy({
