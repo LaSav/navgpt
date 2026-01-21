@@ -398,8 +398,15 @@ export default function Sidebar({
                 )
               })}
             </div>
-
-            <div class='footer'>
+          </>
+        ) : (
+          <div class='settings-view'>
+            <ProPanel />
+          </div>
+        )}
+        <div class='footer'>
+          {view === 'history' ? (
+            <>
               <span class='footer--meta'>
                 {items.length} prompt{items.length === 1 ? '' : 's'}
               </span>
@@ -411,13 +418,26 @@ export default function Sidebar({
               >
                 Support
               </a>
-            </div>
-          </>
-        ) : (
-          <div class='settings-view' style={{ padding: '.75rem' }}>
-            <ProPanel />
-          </div>
-        )}
+            </>
+          ) : (
+            <>
+              <a
+                class='footer--meta'
+                href='https://navgpt.app/contact'
+                target='_blank'
+                rel='noreferrer'
+              ></a>
+              <a
+                class='footer--meta'
+                href='https://navgpt.app/contact'
+                target='_blank'
+                rel='noreferrer'
+              >
+                Support
+              </a>
+            </>
+          )}
+        </div>
       </div>
     </>
   )

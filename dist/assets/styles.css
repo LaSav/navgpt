@@ -87,7 +87,7 @@
    LAYOUT PANEL
 ---------------------------------------- */
 .container {
-  width: 320px;
+  width: 280px;
   height: 100vh;
   position: fixed;
   top: 0;
@@ -484,6 +484,17 @@ TOOLTIP
 .tooltip-shortcut {
   color: var(--text-secondary);
   margin-left: 4px;
+}
+
+/* ----------------------------------------
+  Settings
+---------------------------------------- */
+
+.settings-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem; /* move inline style here */
 }
 
 /* ----------------------------------------
