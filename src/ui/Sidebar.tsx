@@ -185,11 +185,10 @@ export default function Sidebar({
         aria-label='Prompt history'
       >
         <div class='header'>
-          <div class='title'>
+          <div class='header--title'>
             {view === 'history' ? (
               <>
-                <span>Prompts</span>
-                <Navgpt size={18} />
+                <Navgpt size={20} />
               </>
             ) : (
               <>
@@ -280,6 +279,7 @@ export default function Sidebar({
         {view === 'history' ? (
           <>
             <div class='list'>
+              <p class='list--title'>Prompts</p>
               {items.length === 0 && (
                 <div style={{ opacity: 0.7, padding: '.6rem' }}>
                   No prompts found.

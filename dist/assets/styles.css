@@ -114,23 +114,17 @@
   align-items: center;
   gap: 0.5rem;
   height: 52px;
-  padding: 0 0.6rem;
+  padding: 0 1rem;
   flex: 0 0 auto;
 }
 
-.title {
+.header--title {
   font-size: var(--text-sm);
   flex: 1;
   display: flex;
   align-items: center;
   gap: 0.4rem;
   min-width: 0;
-}
-
-.title span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ----------------------------------------
@@ -168,6 +162,13 @@
 
 .list::-webkit-scrollbar-thumb:hover {
   background: var(--bg-primary);
+}
+
+.list--title {
+  color: var(--text-secondary);
+  margin-bottom: 0;
+  margin-top: 0.2rem;
+  padding: 0 0.5rem;
 }
 
 .item {
