@@ -3,20 +3,20 @@ import {
   getEntitlementState,
   validateLicense,
   activateLicenseKey,
+  ensureInstanceName,
 } from './entitlement/entitlement'
 import { getLicense } from './entitlement/storage'
 
 const ALARM_NAME = 'navgpt_validate'
-
 let inFlightValidate: Promise<any> | null = null
 
 async function scheduleAlarmSoon() {
-  // Run in ~1 minute after install/startup to establish nextValidateAt
   await chrome.alarms.create(ALARM_NAME, { delayInMinutes: 1 })
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
   await ensureTrialStarted(Date.now())
+  await ensureInstanceName()
   await scheduleAlarmSoon()
 })
 
@@ -28,9 +28,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== ALARM_NAME) return
 
   const license = await getLicense()
-  if (!license.licenseKey) return // nothing to do
+  if (!license.licenseKey) return
 
-  // Best-effort validation
   if (!inFlightValidate) {
     inFlightValidate = validateLicense(Date.now(), { force: false }).finally(
       () => {
@@ -60,7 +59,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
 
       case 'NAVGPT_VALIDATE': {
-        // Gate actions can force validation if desired
         const force = !!msg.force
         if (!inFlightValidate) {
           inFlightValidate = validateLicense(now, { force }).finally(() => {
@@ -75,15 +73,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
       case 'NAVGPT_ACTIVATE': {
         const licenseKey = String(msg.licenseKey ?? '').trim()
-        const instanceName = String(msg.instanceName ?? '').trim()
-        if (!licenseKey || !instanceName) {
-          sendResponse({
-            ok: false,
-            error: 'Missing license key or instance name',
-          })
+        if (!licenseKey) {
+          sendResponse({ ok: false, error: 'Missing license key' })
           return
         }
-        const r = await activateLicenseKey(licenseKey, instanceName, now)
+        const r = await activateLicenseKey(licenseKey, now)
         const state = await getEntitlementState(now)
         sendResponse({ ok: r.ok, error: (r as any).error ?? null, state })
         return
@@ -95,5 +89,5 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
   })()
 
-  return true // keep channel open
+  return true
 })

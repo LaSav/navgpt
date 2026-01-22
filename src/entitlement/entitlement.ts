@@ -19,30 +19,25 @@ export async function ensureTrialStarted(
   now = Date.now(),
 ): Promise<TrialState> {
   const trial = await getTrial()
-
   if (trial.trialConsumed) return trial
 
-  const startedAt = now
-  const endsAt = now + daysToMs(ENTITLEMENT.trialDays)
-
   const next: TrialState = {
-    trialStartedAt: startedAt,
-    trialEndsAt: endsAt,
+    trialStartedAt: now,
+    trialEndsAt: now + daysToMs(ENTITLEMENT.trialDays),
     trialConsumed: true,
   }
-
   await setTrial(next)
   return next
 }
 
-function computePaidStatusFromLicenseKeyStatus(status?: string): PaidStatus {
+function paidStatusFromLs(status?: string): PaidStatus {
   if (status === 'disabled') return 'disabled'
   if (status === 'expired') return 'expired'
   if (status === 'active' || status === 'inactive') return 'active'
   return 'none'
 }
 
-export function computeEntitlement(
+function compute(
   now: number,
   trial: TrialState,
   license: LicenseState,
@@ -59,37 +54,23 @@ export function computeEntitlement(
     tier = 'disabled'
     reason = 'License disabled'
   } else if (paidStatus === 'expired') {
-    if (ENTITLEMENT.courtesyHoursOnExpiry > 0 && hasGrace) {
-      tier = 'grace'
-      reason = 'Courtesy/grace period'
-    } else {
-      tier = 'expired'
-      reason = 'Subscription expired'
-    }
+    tier = 'expired'
+    reason = 'Subscription expired'
   } else if (paidStatus === 'active') {
     tier = 'pro'
     reason = 'Active subscription'
   } else if (trialActive) {
-    tier = '14 day free pro trial'
+    tier = 'trial'
     reason = 'Trial active'
   }
 
-  // If we previously validated successfully and are offline, allow grace.
-  if (
-    (paidStatus === 'active' || paidStatus === 'none') &&
-    hasGrace &&
-    tier !== 'pro'
-  ) {
-    // Grace is only meaningful if user had a paid license stored.
-    if (license.licenseKey && license.instanceId) {
-      tier = 'grace'
-      reason = 'Offline grace window'
-    }
+  // Offline/provider outage grace (only meaningful if there is a paid key stored)
+  if (tier !== 'pro' && hasGrace && license.licenseKey && license.instanceId) {
+    tier = 'grace'
+    reason = 'Offline grace window'
   }
 
-  const proAllowed =
-    tier === 'pro' || tier === '14 day free pro trial' || tier === 'grace'
-
+  const proAllowed = tier === 'pro' || tier === 'trial' || tier === 'grace'
   return { tier, now, trial, license, proAllowed, reason }
 }
 
@@ -106,43 +87,44 @@ export async function getEntitlementState(
 ): Promise<EntitlementState> {
   const trial = await getTrial()
   const license = await getLicense()
-  return computeEntitlement(now, trial, license)
+  return compute(now, trial, license)
 }
 
-export async function activateLicenseKey(
-  licenseKey: string,
-  instanceName: string,
-  now = Date.now(),
-) {
+export async function ensureInstanceName(): Promise<string> {
+  const license = await getLicense()
+  if (license.instanceName) return license.instanceName
+
+  const instanceName = `chrome-${crypto.randomUUID().slice(0, 8)}`
+  await setLicense({ ...license, instanceName })
+  return instanceName
+}
+
+export async function activateLicenseKey(licenseKey: string, now = Date.now()) {
+  const instanceName = await ensureInstanceName()
   const r = await lsActivate(licenseKey, instanceName)
 
   if (!r.activated || !r.instance?.id) {
     return { ok: false as const, error: r.error ?? 'Activation failed' }
   }
 
-  const paidStatus = computePaidStatusFromLicenseKeyStatus(
-    r.license_key?.status,
-  )
+  const paidStatus = paidStatusFromLs(r.license_key?.status)
 
   const next: LicenseState = {
+    ...((await getLicense()) ?? {}),
     licenseKey,
     instanceName,
     instanceId: r.instance.id,
     paidStatus,
     lastValidatedAt: undefined,
-    nextValidateAt: now, // validate immediately after activation
+    nextValidateAt: now,
     graceUntil: undefined,
     lastError: null,
   }
-
   await setLicense(next)
 
-  // Immediately validate (bind instance)
+  // validate immediately to set grace + next schedule
   const v = await validateLicense(now, { force: true })
-  if (!v.ok) {
-    return { ok: false as const, error: v.error }
-  }
-
+  if (!v.ok) return { ok: false as const, error: v.error }
   return { ok: true as const }
 }
 
@@ -160,31 +142,19 @@ export async function validateLicense(
     const v = await lsValidate(license.licenseKey, license.instanceId)
 
     if (!v.valid) {
-      // Not valid (expired/disabled/etc)
-      const paidStatus = computePaidStatusFromLicenseKeyStatus(
-        v.license_key?.status,
-      )
-      const courtesy =
-        ENTITLEMENT.courtesyHoursOnExpiry > 0
-          ? now + hoursToMs(ENTITLEMENT.courtesyHoursOnExpiry)
-          : undefined
-
+      const paidStatus = paidStatusFromLs(v.license_key?.status)
       await setLicense({
         ...license,
         paidStatus,
         lastValidatedAt: now,
         nextValidateAt: nextValidateAt(now),
-        graceUntil: courtesy,
+        graceUntil: undefined,
         lastError: v.error ?? 'License invalid',
       })
-
       return { ok: false, error: v.error ?? 'License invalid' }
     }
 
-    // Valid: treat inactive/active as paid active (subscription-backed licenses become expired when sub ends). :contentReference[oaicite:2]{index=2}
-    const paidStatus = computePaidStatusFromLicenseKeyStatus(
-      v.license_key?.status,
-    )
+    const paidStatus = paidStatusFromLs(v.license_key?.status)
 
     await setLicense({
       ...license,
@@ -197,7 +167,6 @@ export async function validateLicense(
 
     return { ok: true }
   } catch (e: any) {
-    // Network / fetch failure: allow grace if within window
     const msg = typeof e?.message === 'string' ? e.message : 'Network error'
     await setLicense({
       ...license,

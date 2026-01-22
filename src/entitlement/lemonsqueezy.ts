@@ -38,10 +38,7 @@ export async function lsActivate(
     },
     body: formBody({ license_key: licenseKey, instance_name: instanceName }),
   })
-
-  // Lemon returns JSON with fields even on some errors; but also uses 4XX for errors. :contentReference[oaicite:1]{index=1}
-  const json = (await res.json()) as ActivateResponse
-  return json
+  return (await res.json()) as ActivateResponse
 }
 
 export async function lsValidate(
@@ -59,7 +56,5 @@ export async function lsValidate(
     },
     body: formBody(params),
   })
-
-  const json = (await res.json()) as ValidateResponse
-  return json
+  return (await res.json()) as ValidateResponse
 }

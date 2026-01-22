@@ -1,27 +1,27 @@
 export type PaidStatus = 'none' | 'active' | 'expired' | 'disabled'
 export type EntitlementTier =
   | 'free'
-  | '14 day free pro trial'
+  | 'trial'
   | 'pro'
   | 'grace'
   | 'expired'
   | 'disabled'
 
 export type TrialState = {
-  trialStartedAt?: number // ms
-  trialEndsAt?: number // ms
+  trialStartedAt?: number
+  trialEndsAt?: number
   trialConsumed?: boolean
 }
 
 export type LicenseState = {
-  licenseKey?: string // store plaintext (trust-first); optionally mask in UI
-  instanceName?: string // generated label you send on activation
+  licenseKey?: string
+  instanceName?: string // stable per install
   instanceId?: string // returned by activation
   paidStatus?: PaidStatus
 
-  lastValidatedAt?: number // ms
-  nextValidateAt?: number // ms
-  graceUntil?: number // ms
+  lastValidatedAt?: number
+  nextValidateAt?: number
+  graceUntil?: number
 
   lastError?: string | null
 }
@@ -29,11 +29,8 @@ export type LicenseState = {
 export type EntitlementState = {
   tier: EntitlementTier
   now: number
-
   trial: TrialState
   license: LicenseState
-
-  // Convenience fields for UI
   proAllowed: boolean
   reason: string
 }
