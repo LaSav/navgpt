@@ -7,4 +7,5 @@ export const ENTITLEMENT = {
 } as const
 
 // direct Lemon; or replace with your proxy origin:
-export const LICENSE_API_BASE = 'https://api.lemonsqueezy.com'
+export const LICENSE_API_BASE =
+  'https://navgpt-license-proxy.navgpt.workers.dev'

@@ -7,6 +7,8 @@ import {
 } from './entitlement/entitlement'
 import { getLicense } from './entitlement/storage'
 
+console.log('[navgpt] SW start')
+
 const ALARM_NAME = 'navgpt_validate'
 let inFlightValidate: Promise<any> | null = null
 
@@ -59,6 +61,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
 
       case 'NAVGPT_VALIDATE': {
+        console.log('[navgpt] msg', msg.type)
         const force = !!msg.force
         if (!inFlightValidate) {
           inFlightValidate = validateLicense(now, { force }).finally(() => {
@@ -72,6 +75,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
 
       case 'NAVGPT_ACTIVATE': {
+        console.log('[navgpt] msg', msg.type)
         const licenseKey = String(msg.licenseKey ?? '').trim()
         if (!licenseKey) {
           sendResponse({ ok: false, error: 'Missing license key' })

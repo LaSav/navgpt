@@ -30,7 +30,7 @@ export async function lsActivate(
   licenseKey: string,
   instanceName: string,
 ): Promise<ActivateResponse> {
-  const res = await fetch(`${LICENSE_API_BASE}/v1/licenses/activate`, {
+  const res = await fetch(`${LICENSE_API_BASE}/activate`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -48,7 +48,7 @@ export async function lsValidate(
   const params: Record<string, string> = { license_key: licenseKey }
   if (instanceId) params.instance_id = instanceId
 
-  const res = await fetch(`${LICENSE_API_BASE}/v1/licenses/validate`, {
+  const res = await fetch(`${LICENSE_API_BASE}/validate`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
