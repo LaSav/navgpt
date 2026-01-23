@@ -11,6 +11,7 @@ console.log('[navgpt] SW start')
 
 const ALARM_NAME = 'navgpt_validate'
 let inFlightValidate: Promise<any> | null = null
+let inFlightActivate: Promise<any> | null = null
 
 async function scheduleAlarmSoon() {
   await chrome.alarms.create(ALARM_NAME, { delayInMinutes: 1 })
@@ -76,14 +77,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
       case 'NAVGPT_ACTIVATE': {
         console.log('[navgpt] msg', msg.type)
+
         const licenseKey = String(msg.licenseKey ?? '').trim()
         if (!licenseKey) {
           sendResponse({ ok: false, error: 'Missing license key' })
           return
         }
-        const r = await activateLicenseKey(licenseKey, now)
+
+        if (!inFlightActivate) {
+          inFlightActivate = activateLicenseKey(licenseKey, now).finally(() => {
+            inFlightActivate = null
+          })
+        }
+
+        const r = await inFlightActivate
         const state = await getEntitlementState(now)
-        sendResponse({ ok: r.ok, error: (r as any).error ?? null, state })
+
+        sendResponse({
+          ok: r.ok,
+          error: (r as any).error ?? null,
+          state,
+        })
         return
       }
 

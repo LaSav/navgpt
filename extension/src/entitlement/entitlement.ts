@@ -100,7 +100,16 @@ export async function ensureInstanceName(): Promise<string> {
 }
 
 export async function activateLicenseKey(licenseKey: string, now = Date.now()) {
-  const instanceName = await ensureInstanceName()
+  const existing = await getLicense()
+
+  // ✅ If we already activated this key on this install, do NOT activate again.
+  if (existing.licenseKey === licenseKey && existing.instanceId) {
+    const v = await validateLicense(now, { force: true })
+    if (!v.ok) return { ok: false as const, error: v.error }
+    return { ok: true as const }
+  }
+
+  const instanceName = existing.instanceName ?? (await ensureInstanceName())
   const r = await lsActivate(licenseKey, instanceName)
 
   if (!r.activated || !r.instance?.id) {
@@ -110,7 +119,7 @@ export async function activateLicenseKey(licenseKey: string, now = Date.now()) {
   const paidStatus = paidStatusFromLs(r.license_key?.status)
 
   const next: LicenseState = {
-    ...((await getLicense()) ?? {}),
+    ...existing,
     licenseKey,
     instanceName,
     instanceId: r.instance.id,
@@ -122,7 +131,6 @@ export async function activateLicenseKey(licenseKey: string, now = Date.now()) {
   }
   await setLicense(next)
 
-  // validate immediately to set grace + next schedule
   const v = await validateLicense(now, { force: true })
   if (!v.ok) return { ok: false as const, error: v.error }
   return { ok: true as const }
