@@ -25,6 +25,7 @@ export function ProPanel() {
       force,
     })
     setState(r.state)
+    // show error if hard-failed
     if (r.validate?.ok === false && r.validate?.network !== true) {
       setError(r.validate?.error ?? 'Validation failed')
     } else {
@@ -38,6 +39,7 @@ export function ProPanel() {
         type: 'NAVGPT_ENSURE_TRIAL',
       })
       setState(r.state)
+      await refresh(true) // force validate on open
     })()
   }, [])
 
@@ -102,7 +104,7 @@ export function ProPanel() {
         <button
           type='button'
           class='pro-panel__btn pro-panel__btn--iconlabel'
-          onClick={() => refresh(false)}
+          onClick={() => refresh(true)}
           aria-label='Reload status'
         >
           <span>Refresh status</span>

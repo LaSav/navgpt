@@ -102,14 +102,31 @@ async function getEntitlement(forceValidate = false) {
 
 async function requirePro(): Promise<boolean> {
   const state = await getEntitlement(false)
-  if (state?.proAllowed) return true
 
-  // Optional: force validation on gate
-  const state2 = await getEntitlement(true)
+  if (state?.tier === 'trial' && state?.proAllowed) return true
+
+  const hasKey = !!state?.license?.licenseKey
+  if (!hasKey) {
+    alert(
+      'This feature requires NavGPT Pro. Open the NavGPT sidebar to upgrade or enter your license key.',
+    )
+    return false
+  }
+
+  const lastValidated = state.license?.lastValidatedAt ?? 0
+  const now = Date.now()
+
+  const STALE_AFTER_MS = 12 * 60 * 60 * 1000
+
+  const shouldForce = now - lastValidated > STALE_AFTER_MS
+
+  const state2 = await getEntitlement(shouldForce)
+
   if (state2?.proAllowed) return true
 
-  // Trust-first UX: just inform; don’t hard-block your whole extension unless you want to.
-  alert('This feature requires NavGPT Pro. Upgrade or enter a license key.')
+  alert(
+    'This feature requires NavGPT Pro. Open the NavGPT sidebar to upgrade or enter your license key.',
+  )
   return false
 }
 
