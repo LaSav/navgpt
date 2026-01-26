@@ -137,7 +137,7 @@ function snapToPrompt(targetEl: HTMLElement) {
   article.scrollIntoView({
     block: 'start',
     inline: 'nearest',
-    behavior: 'instant' as ScrollBehavior,
+    behavior: 'auto' as ScrollBehavior,
   })
 
   // 2) After layout settles, apply a *small* smooth correction (no second snap)
