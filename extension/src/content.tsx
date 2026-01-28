@@ -5,6 +5,7 @@ import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
 import { hasProAccess, requireProAccess } from './entitlement/gate'
 import { consumeDailyQuota } from './entitlement/dailyLimit'
+import { Toast } from './ui/Toast'
 
 function findLayoutRoot(): HTMLElement {
   const header =
@@ -208,6 +209,19 @@ function App({
     reason: string
     ts: number
   } | null>(null)
+  const [toast, setToast] = useState<{
+    message: string
+    actionLabel?: string
+    onAction?: () => void
+  } | null>(null)
+
+  const showForbiddenToast = async () => {
+    setToast({
+      message: `Editing from the side panel is a pro feature. Upgrade to access.`,
+      actionLabel: 'Upgrade',
+      onAction: () => nudgePro('forbidden_feature'),
+    })
+  }
 
   const nudgePro = (reason: string) => setProNudge({ reason, ts: Date.now() })
 
@@ -236,7 +250,7 @@ function App({
   const onEdit = async (id: string) => {
     const gate = await requireProAccess()
     if (!gate.ok) {
-      nudgePro('edit')
+      showForbiddenToast()
       return
     }
     const item = items.find((i) => i.id === id)
@@ -460,6 +474,8 @@ function App({
       onRequirePro={(reason) => nudgePro(reason)}
       proNudge={proNudge}
       isPro={isPro}
+      toast={toast}
+      onDismissToast={() => setToast(null)}
     />
   )
 }

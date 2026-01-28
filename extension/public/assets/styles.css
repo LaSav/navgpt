@@ -524,7 +524,7 @@ TOOLTIP
 }
 
 /* ----------------------------------------
-   PRO PANEL (token-aligned)
+   PRO PANEL
 ---------------------------------------- */
 .pro-panel {
   margin-top: 0.4rem;
@@ -681,6 +681,67 @@ TOOLTIP
 .status__icon--free svg,
 .pro-panel__btn svg {
   display: block;
+}
+
+/* ----------------------------------------
+   TOAST
+---------------------------------------- */
+
+.toast-overlay {
+  position: absolute;
+  top: 0rem;
+  z-index: 1000;
+
+  /* don't block list interactions */
+  pointer-events: none;
+}
+
+.toast-overlay .toast {
+  pointer-events: auto; /* toast buttons remain clickable */
+}
+
+.toast {
+  padding: 0.7rem 0.85rem;
+  background: #232323;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column; /* stack content vertically */
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.toast__message {
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.95;
+}
+
+.toast__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.toast__action {
+  border: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  background: var(--accent, #6b5cff);
+  color: white;
+  white-space: nowrap;
+}
+
+.toast__close {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
 }
 
 /* ----------------------------------------

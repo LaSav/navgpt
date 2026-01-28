@@ -14,6 +14,7 @@ import { Settings } from './icons/Settings'
 import { Back } from './icons/Back'
 import { Collapse } from './icons/Collapse'
 import { Locked } from './icons/Locked'
+import { Toast } from './Toast'
 
 type ProNudge = { reason: string; ts: number } | null
 
@@ -32,6 +33,12 @@ type Props = {
   onRequirePro?: (reason: string) => void
   proNudge: ProNudge
   isPro: boolean
+  toast?: {
+    message: string
+    actionLabel?: string
+    onAction?: () => void
+  } | null
+  onDismissToast?: () => void
 }
 
 type View = 'history' | 'settings'
@@ -51,6 +58,8 @@ export default function Sidebar({
   onRequirePro,
   proNudge,
   isPro,
+  toast,
+  onDismissToast,
 }: Props) {
   const panelId = 'prompt-history-sidebar'
   const [view, setView] = useState<View>('history')
@@ -387,7 +396,7 @@ export default function Sidebar({
                       <div class='edits-controls'>
                         <button
                           type='button'
-                          class='badge__text-btn badge__btn--iconlabel'
+                          class='badge__locked-btn badge__btn--iconlabel'
                           onClick={(e) => {
                             e.stopPropagation()
                             onRequirePro?.('branch_versions')
@@ -423,6 +432,17 @@ export default function Sidebar({
             <ProPanel />
           </div>
         )}
+
+        <div class='toast-overlay' aria-live='polite'>
+          {toast && onDismissToast && (
+            <Toast
+              message={toast.message}
+              actionLabel={toast.actionLabel}
+              onAction={toast.onAction}
+              onClose={onDismissToast}
+            />
+          )}
+        </div>
 
         <div class='footer'>
           {view === 'history' ? (
