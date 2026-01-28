@@ -13,6 +13,9 @@ import { ProPanel } from './ProPanel'
 import { Settings } from './icons/Settings'
 import { Back } from './icons/Back'
 import { Collapse } from './icons/Collapse'
+import { Locked } from './icons/Locked'
+
+type ProNudge = { reason: string; ts: number } | null
 
 type Props = {
   items: PromptItem[]
@@ -26,6 +29,9 @@ type Props = {
   onToggle: () => void
   onNextPrompt: () => void
   onPreviousPrompt: () => void
+  onRequirePro?: (reason: string) => void
+  proNudge: ProNudge
+  isPro: boolean
 }
 
 type View = 'history' | 'settings'
@@ -42,6 +48,9 @@ export default function Sidebar({
   onToggle,
   onNextPrompt,
   onPreviousPrompt,
+  onRequirePro,
+  proNudge,
+  isPro,
 }: Props) {
   const panelId = 'prompt-history-sidebar'
   const [view, setView] = useState<View>('history')
@@ -76,7 +85,6 @@ export default function Sidebar({
     if (!isOpen) onToggle()
   }
 
-  // Optional: when the sidebar closes, return to history view
   useEffect(() => {
     if (!isOpen) setView('history')
   }, [isOpen])
@@ -105,9 +113,15 @@ export default function Sidebar({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [view, onNextPrompt, onPreviousPrompt, canGoNext, canGoPrevious])
 
+  useEffect(() => {
+    if (!proNudge) return
+    setView('settings')
+    if (!isOpen) onToggle()
+  }, [proNudge?.ts])
+
   return (
     <>
-      {/* Collapsed mini column */}
+      {/* Mini collapsed rail */}
       <div
         class={`sidebar-mini ${isOpen ? 'sidebar-mini--hidden' : ''}`}
         aria-hidden={isOpen}
@@ -187,9 +201,7 @@ export default function Sidebar({
         <div class='header'>
           <div class='header--title'>
             {view === 'history' ? (
-              <>
-                <Navgpt size={20} />
-              </>
+              <Navgpt size={20} />
             ) : (
               <>
                 <span>Settings</span>
@@ -264,12 +276,7 @@ export default function Sidebar({
           )}
 
           <Tooltip label='Close'>
-            <button
-              type='button'
-              class='header-toggle'
-              onClick={onToggle}
-              aria-label='Collapse prompt history'
-            >
+            <button class='header-toggle' onClick={onToggle}>
               <Collapse size={20} />
             </button>
           </Tooltip>
@@ -277,70 +284,68 @@ export default function Sidebar({
 
         {/* Body switches by view */}
         {view === 'history' ? (
-          <>
-            <div class='list'>
-              <p class='list--title'>Prompts</p>
-              {items.length === 0 && (
-                <div style={{ opacity: 0.7, padding: '.6rem' }}>
-                  No prompts found.
-                </div>
-              )}
+          <div class='list'>
+            <p class='list--title'>Prompts</p>
+            {items.length === 0 && (
+              <div style={{ opacity: 0.7, padding: '.6rem' }}>
+                No prompts found.
+              </div>
+            )}
 
-              {items.map((p, idx) => {
-                const canPrevVersion = p.currentVersion > 1
-                const canNextVersion = p.currentVersion < p.totalVersions
+            {items.map((p, idx) => {
+              const canPrevVersion = p.currentVersion > 1
+              const canNextVersion = p.currentVersion < p.totalVersions
 
-                return (
-                  <div
-                    key={p.id}
-                    data-prompt-id={p.id}
-                    class={`item ${activeId === p.id ? 'item--active' : ''}`}
-                    role='button'
-                    tabIndex={0}
-                    onClick={() => onJump(p.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        onJump(p.id)
-                      }
-                    }}
-                  >
-                    <div class='item-meta'>
-                      <span class='meta--index'>{idx + 1}</span>
-
-                      {p.hasCode && (
-                        <span
-                          class='badge'
-                          title={
-                            p.codeLang
-                              ? `Contains code (${p.codeLang})`
-                              : 'Contains code'
-                          }
-                        >
-                          {p.codeLang ? p.codeLang : <Code size={11} />}
-                        </span>
-                      )}
-                    </div>
-
-                    <div class='text-row'>
-                      <div class='text'>{p.text}</div>
-                    </div>
-
-                    <div class='item-footer'>
-                      <button
-                        type='button'
-                        class='badge__button'
-                        aria-label='Copy Prompt'
-                        title='Copy prompt'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onCopy(p.id)
-                        }}
+              return (
+                <div
+                  key={p.id}
+                  data-prompt-id={p.id}
+                  class={`item ${activeId === p.id ? 'item--active' : ''}`}
+                  role='button'
+                  tabIndex={0}
+                  onClick={() => onJump(p.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onJump(p.id)
+                    }
+                  }}
+                >
+                  <div class='item-meta'>
+                    <span class='meta--index'>{idx + 1}</span>
+                    {p.hasCode && (
+                      <span
+                        class='badge'
+                        title={
+                          p.codeLang
+                            ? `Contains code (${p.codeLang})`
+                            : 'Contains code'
+                        }
                       >
-                        <Copy size={12} />
-                      </button>
+                        {p.codeLang ? p.codeLang : <Code size={11} />}
+                      </span>
+                    )}
+                  </div>
 
-                      {p.edits > 0 && (
+                  <div class='text-row'>
+                    <div class='text'>{p.text}</div>
+                  </div>
+
+                  <div class='item-footer'>
+                    <button
+                      type='button'
+                      class='badge__button'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onCopy(p.id)
+                      }}
+                    >
+                      <Copy size={12} />
+                    </button>
+
+                    {/* Branch / version control */}
+                    {isPro ? (
+                      p.edits > 0 && (
                         <div class='edits-controls'>
                           <span class='badge badge--edits'>
                             <button
@@ -355,12 +360,14 @@ export default function Sidebar({
                             >
                               <ArrowLeft />
                             </button>
+
                             <span
                               class='badge-text'
                               title={`${p.totalVersions} edits`}
                             >
                               {p.currentVersion} / {p.totalVersions}
                             </span>
+
                             <button
                               type='button'
                               class='badge__button'
@@ -375,35 +382,48 @@ export default function Sidebar({
                             </button>
                           </span>
                         </div>
-                      )}
+                      )
+                    ) : (
+                      <div class='edits-controls'>
+                        <button
+                          type='button'
+                          class='badge__text-btn badge__btn--iconlabel'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRequirePro?.('branch_versions')
+                          }}
+                          title='Version history & branching is available on Pro'
+                        >
+                          <Locked /> / <Locked />
+                        </button>
+                      </div>
+                    )}
 
-                      {p.isEditing && (
-                        <span class='badge badge--editing'>editing</span>
-                      )}
+                    {p.isEditing && (
+                      <span class='badge badge--editing'>editing</span>
+                    )}
 
-                      <button
-                        type='button'
-                        class='badge__button'
-                        aria-label='Edit Prompt'
-                        title='Edit prompt'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onEdit(p.id)
-                        }}
-                      >
-                        <Edit size={12} />
-                      </button>
-                    </div>
+                    <button
+                      type='button'
+                      class='badge__button'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onEdit(p.id)
+                      }}
+                    >
+                      <Edit size={12} />
+                    </button>
                   </div>
-                )
-              })}
-            </div>
-          </>
+                </div>
+              )
+            })}
+          </div>
         ) : (
           <div class='settings-view'>
             <ProPanel />
           </div>
         )}
+
         <div class='footer'>
           {view === 'history' ? (
             <>
@@ -420,22 +440,14 @@ export default function Sidebar({
               </a>
             </>
           ) : (
-            <>
-              <a
-                class='footer--meta'
-                href='https://navgpt.app/contact'
-                target='_blank'
-                rel='noreferrer'
-              ></a>
-              <a
-                class='footer--meta'
-                href='https://navgpt.app/contact'
-                target='_blank'
-                rel='noreferrer'
-              >
-                Support
-              </a>
-            </>
+            <a
+              class='footer--meta'
+              href='https://navgpt.app/contact'
+              target='_blank'
+              rel='noreferrer'
+            >
+              Support
+            </a>
           )}
         </div>
       </div>

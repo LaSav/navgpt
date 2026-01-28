@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import Sidebar from './ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
+import { hasProAccess, requireProAccess } from './entitlement/gate'
+import { consumeDailyQuota } from './entitlement/dailyLimit'
 
 function findLayoutRoot(): HTMLElement {
   const header =
@@ -90,44 +92,6 @@ function mountSidebar() {
   shadow.appendChild(mount)
 
   return { host, shadow, mount }
-}
-
-async function getEntitlement(forceValidate = false) {
-  const r = await chrome.runtime.sendMessage({
-    type: 'NAVGPT_VALIDATE',
-    force: forceValidate,
-  })
-  return r.state
-}
-
-async function requirePro(): Promise<boolean> {
-  const state = await getEntitlement(false)
-
-  if (state?.tier === 'trial' && state?.proAllowed) return true
-
-  const hasKey = !!state?.license?.licenseKey
-  if (!hasKey) {
-    alert(
-      'This feature requires NavGPT Pro. Open the NavGPT sidebar to upgrade or enter your license key.',
-    )
-    return false
-  }
-
-  const lastValidated = state.license?.lastValidatedAt ?? 0
-  const now = Date.now()
-
-  const STALE_AFTER_MS = 12 * 60 * 60 * 1000
-
-  const shouldForce = now - lastValidated > STALE_AFTER_MS
-
-  const state2 = await getEntitlement(shouldForce)
-
-  if (state2?.proAllowed) return true
-
-  alert(
-    'This feature requires NavGPT Pro. Open the NavGPT sidebar to upgrade or enter your license key.',
-  )
-  return false
 }
 
 function getScrollParent(node: HTMLElement): HTMLElement {
@@ -239,21 +203,42 @@ function App({
   const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [isOpen, setIsOpen] = useState(true)
+  const [isPro, setIsPro] = useState(false)
+  const [proNudge, setProNudge] = useState<{
+    reason: string
+    ts: number
+  } | null>(null)
+
+  const nudgePro = (reason: string) => setProNudge({ reason, ts: Date.now() })
 
   const scrollerRef = useRef<HTMLElement | null>(
     items[0]?.el ? getScrollParent(items[0].el) : null,
   )
 
-  const onJump = (id: string) => {
+  const onJump = async (id: string) => {
     const target = items.find((i) => i.id === id)?.el
-    if (target) {
-      snapToPrompt(target)
-      setActiveId(id)
-      scrollSidebarActiveIntoView(shadowMount, id)
+    if (!target) return
+
+    const isPro = await hasProAccess()
+    if (!isPro) {
+      const q = await consumeDailyQuota(1)
+      if (!q.ok) {
+        nudgePro('daily_limit')
+        return
+      }
     }
+
+    snapToPrompt(target)
+    setActiveId(id)
+    scrollSidebarActiveIntoView(shadowMount, id)
   }
 
-  const onEdit = (id: string) => {
+  const onEdit = async (id: string) => {
+    const gate = await requireProAccess()
+    if (!gate.ok) {
+      nudgePro('edit')
+      return
+    }
     const item = items.find((i) => i.id === id)
     if (!item) return
 
@@ -301,11 +286,19 @@ function App({
     const textToCopy = item.rawText || item.text
     if (!textToCopy) return
 
+    const isPro = await hasProAccess()
+    if (!isPro) {
+      const q = await consumeDailyQuota(1)
+      if (!q.ok) {
+        nudgePro('daily_limit')
+        return
+      }
+    }
+
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(textToCopy)
       } else {
-        // Fallback: temporary textarea
         const ta = document.createElement('textarea')
         ta.value = textToCopy
         ta.style.position = 'fixed'
@@ -321,7 +314,16 @@ function App({
     }
   }
 
-  const changeVersion = (id: string, direction: -1 | 1) => {
+  const changeVersion = async (id: string, direction: -1 | 1) => {
+    const gate = await requireProAccess()
+    if (!gate.ok) {
+      nudgePro('branch_versions')
+      return
+    }
+
+    // (optional) keep local entitlement in sync
+    setIsPro(true)
+
     const item = items.find((i) => i.id === id)
     if (!item) return
 
@@ -375,6 +377,8 @@ function App({
   const handleNextPrompt = () => goToPromptByOffset(1)
   const handlePreviousPrompt = () => goToPromptByOffset(-1)
 
+  const handleToggle = () => setIsOpen((prev) => !prev)
+
   const OPEN_WIDTH = 280
   const MINI_WIDTH = 52
 
@@ -425,7 +429,20 @@ function App({
     return () => window.removeEventListener('resize', onResize)
   }, [items])
 
-  const handleToggle = () => setIsOpen((prev) => !prev)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const ok = await hasProAccess()
+        if (!cancelled) setIsPro(ok)
+      } catch {
+        if (!cancelled) setIsPro(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [proNudge?.ts]) // re-check after any nudge / state change
 
   return (
     <Sidebar
@@ -440,6 +457,9 @@ function App({
       onCopy={onCopy}
       onPreviousVersion={onPreviousVersion}
       onNextVersion={onNextVersion}
+      onRequirePro={(reason) => nudgePro(reason)}
+      proNudge={proNudge}
+      isPro={isPro}
     />
   )
 }
