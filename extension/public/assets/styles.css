@@ -426,8 +426,34 @@
   height: 25px;
 }
 
-.badge__button:hover {
+.badge__button:hover,
+.badge__locked-btn:hover {
   background: var(--hover-bg);
+}
+
+.badge__locked-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.55rem;
+}
+
+.badge__btn--iconlabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.badge__btn--iconlabel svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 /* ----------------------------------------
@@ -548,7 +574,6 @@ TOOLTIP
   color: var(--text-secondary);
 }
 
-/* Actions layout */
 .pro-panel__actions {
   display: flex;
   gap: 0.5rem;
@@ -562,7 +587,6 @@ TOOLTIP
   width: 95%;
 }
 
-/* Input matches sidebar theme tokens */
 .pro-panel__input {
   width: 95%;
   box-sizing: border-box;
@@ -584,7 +608,6 @@ TOOLTIP
   outline: 1px solid var(--text-secondary);
 }
 
-/* Button base aligns with the rest of your button feel */
 .pro-panel__btn {
   appearance: none;
   border: 1px solid var(--border-color);
@@ -616,7 +639,6 @@ TOOLTIP
   margin-top: 0.5rem;
 }
 
-/* Icon + label button */
 .pro-panel__btn--iconlabel {
   display: inline-flex;
   align-items: center;
@@ -625,19 +647,16 @@ TOOLTIP
   white-space: nowrap;
 }
 
-/* Normalize SVG sizing/alignment inside buttons */
 .pro-panel__btn--iconlabel svg {
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
 }
 
-/* Optional: slightly tighter padding for icon+label */
 .pro-panel__btn--iconlabel {
   padding: 0.45rem 0.55rem;
 }
 
-/* Error uses a readable default without being neon */
 .pro-panel__error {
   margin-top: 0.5rem;
   color: color-mix(in oklab, #ff3b30 78%, var(--text-primary));
