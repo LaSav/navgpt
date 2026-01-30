@@ -5,7 +5,6 @@ import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
 import { hasProAccess, requireProAccess } from './entitlement/gate'
 import { consumeDailyQuota } from './entitlement/dailyLimit'
-import { Toast } from './ui/Toast'
 
 function findLayoutRoot(): HTMLElement {
   const header =
@@ -205,29 +204,30 @@ function App({
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [isOpen, setIsOpen] = useState(true)
   const [isPro, setIsPro] = useState(false)
-  const [proNudge, setProNudge] = useState<{
-    reason: string
-    ts: number
-  } | null>(null)
   const [toast, setToast] = useState<{
     message: string
     actionLabel?: string
     onAction?: () => void
   } | null>(null)
 
-  const showForbiddenToast = async () => {
-    setToast({
-      message: `Editing from the side panel is a pro feature. Upgrade to access.`,
-      actionLabel: 'Upgrade',
-      onAction: () => nudgePro('forbidden_feature'),
-    })
-  }
-
-  const nudgePro = (reason: string) => setProNudge({ reason, ts: Date.now() })
-
   const scrollerRef = useRef<HTMLElement | null>(
     items[0]?.el ? getScrollParent(items[0].el) : null,
   )
+
+  const openUpgradePage = () => {
+    window.open('https://navgpt.app/', '_blank', 'noopener,noreferrer')
+  }
+
+  const showLockedToast = async (message: string, actionLabel: string) => {
+    setToast({
+      message: message,
+      actionLabel: actionLabel,
+      onAction: () => {
+        setToast(null)
+        openUpgradePage()
+      },
+    })
+  }
 
   const onJump = async (id: string) => {
     const target = items.find((i) => i.id === id)?.el
@@ -237,7 +237,10 @@ function App({
     if (!isPro) {
       const q = await consumeDailyQuota(1)
       if (!q.ok) {
-        nudgePro('daily_limit')
+        showLockedToast(
+          'Editing from the side panel is a pro feature. Upgrade to access.',
+          'Upgrade',
+        )
         return
       }
     }
@@ -250,7 +253,10 @@ function App({
   const onEdit = async (id: string) => {
     const gate = await requireProAccess()
     if (!gate.ok) {
-      showForbiddenToast()
+      showLockedToast(
+        'Editing from the side panel is a pro feature. Upgrade to access.',
+        'Upgrade',
+      )
       return
     }
     const item = items.find((i) => i.id === id)
@@ -304,7 +310,10 @@ function App({
     if (!isPro) {
       const q = await consumeDailyQuota(1)
       if (!q.ok) {
-        nudgePro('daily_limit')
+        showLockedToast(
+          'Editing from the side panel is a pro feature. Upgrade to access.',
+          'Upgrade',
+        )
         return
       }
     }
@@ -331,7 +340,10 @@ function App({
   const changeVersion = async (id: string, direction: -1 | 1) => {
     const gate = await requireProAccess()
     if (!gate.ok) {
-      nudgePro('branch_versions')
+      showLockedToast(
+        'Branch detection & navigation are pro features. Upgrade to access.',
+        'Upgrade',
+      )
       return
     }
 
@@ -456,7 +468,7 @@ function App({
     return () => {
       cancelled = true
     }
-  }, [proNudge?.ts]) // re-check after any nudge / state change
+  }, [])
 
   return (
     <Sidebar
@@ -471,8 +483,7 @@ function App({
       onCopy={onCopy}
       onPreviousVersion={onPreviousVersion}
       onNextVersion={onNextVersion}
-      onRequirePro={(reason) => nudgePro(reason)}
-      proNudge={proNudge}
+      onRequirePro={(message) => showLockedToast(`${message}`, 'Upgrade')}
       isPro={isPro}
       toast={toast}
       onDismissToast={() => setToast(null)}
