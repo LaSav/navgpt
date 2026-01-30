@@ -9,8 +9,6 @@ export type PromptItem = {
   totalVersions: number
   currentVersion: number
   isEditing: boolean
-  hasCode: boolean
-  codeLang?: string
 }
 
 function summarize(text: string, max = 2000): string {
@@ -32,7 +30,7 @@ function parseRevisionInfo(article: HTMLElement | null) {
       total = parseInt(m[2], 10)
     } else {
       const hasPrev = !!article.querySelector(
-        '[aria-label="Previous response"]'
+        '[aria-label="Previous response"]',
       )
       const hasNext = !!article.querySelector('[aria-label="Next response"]')
       if (hasPrev || hasNext) total = 2
@@ -45,54 +43,9 @@ function parseRevisionInfo(article: HTMLElement | null) {
   }
 }
 
-function inferLangFrom(el: Element): string | undefined {
-  const tryVals = [
-    el.getAttribute('data-language'),
-    el.getAttribute('data-lang'),
-    el.getAttribute('lang'),
-    el.getAttribute('aria-label'),
-    el.className,
-  ].filter(Boolean) as string[]
-
-  for (const v of tryVals) {
-    const m = v.match(/\b(language|lang)[-:_ ]?([\w+.-]+)\b/i)
-    if (m && m[2]) return m[2].toLowerCase()
-    const m2 = v.match(
-      /\b(js|javascript|jsx|ts|tsx|python|py|java|kotlin|c\+\+|cpp|csharp|cs|go|rust|rb|ruby|php|bash|sh|zsh|shell|sql|json|yaml|toml)\b/i
-    )
-    if (m2 && m2[0]) return m2[0].toLowerCase()
-  }
-  return undefined
-}
-
-function detectCodeInArticle(article: HTMLElement, rawText: string) {
-  const firstPreCode = article.querySelector('pre code')
-  if (firstPreCode) {
-    const lang =
-      inferLangFrom(firstPreCode) ||
-      (firstPreCode.parentElement
-        ? inferLangFrom(firstPreCode.parentElement)
-        : undefined)
-    return { hasCode: true, codeLang: lang }
-  }
-
-  const inlineCode = article.querySelector('code')
-  if (inlineCode) {
-    return { hasCode: true, codeLang: inferLangFrom(inlineCode) }
-  }
-
-  if (/```/.test(rawText)) {
-    const m = rawText.match(/```([\w+.-]*)/)
-    const lang = m && m[1] ? m[1].toLowerCase() || undefined : undefined
-    return { hasCode: true, codeLang: lang }
-  }
-
-  return { hasCode: false, codeLang: undefined }
-}
-
 export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   const articles = Array.from(
-    root.querySelectorAll<HTMLElement>('article[data-turn="user"]')
+    root.querySelectorAll<HTMLElement>('article[data-turn="user"]'),
   )
 
   return articles.map((article) => {
@@ -111,7 +64,7 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       scrollTarget = article
     } else {
       const bubble = article.querySelector<HTMLElement>(
-        '[data-message-author-role="user"]'
+        '[data-message-author-role="user"]',
       )
       text = bubble?.textContent || ''
       if (bubble) scrollTarget = bubble
@@ -119,8 +72,6 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
 
     const { currentVersion, totalVersions, edits } = parseRevisionInfo(article)
     const short = summarize(text, 360)
-
-    const { hasCode, codeLang } = detectCodeInArticle(article, text)
 
     return {
       id,
@@ -131,8 +82,6 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       totalVersions,
       currentVersion,
       isEditing,
-      hasCode,
-      codeLang,
     }
   })
 }
@@ -150,7 +99,7 @@ function isRelevantMutation(m: MutationRecord): boolean {
         (n) =>
           n instanceof HTMLElement &&
           (n.matches('article[data-turn="user"]') ||
-            !!n.querySelector?.('article[data-turn="user"]'))
+            !!n.querySelector?.('article[data-turn="user"]')),
       )
     ) {
       return true
@@ -158,7 +107,7 @@ function isRelevantMutation(m: MutationRecord): boolean {
 
     const targetEl = m.target as HTMLElement
     const userArticle = targetEl.closest(
-      'article[data-turn="user"]'
+      'article[data-turn="user"]',
     ) as HTMLElement | null
 
     if (userArticle) {
@@ -167,7 +116,7 @@ function isRelevantMutation(m: MutationRecord): boolean {
           (n) =>
             n instanceof HTMLElement &&
             (n.matches('textarea, [contenteditable="true"], form') ||
-              !!n.querySelector?.('textarea, [contenteditable="true"]'))
+              !!n.querySelector?.('textarea, [contenteditable="true"]')),
         )
       ) {
         return true
@@ -182,7 +131,7 @@ function isRelevantMutation(m: MutationRecord): boolean {
     if (!el) return false
 
     const userArticle = el.closest(
-      'article[data-turn="user"]'
+      'article[data-turn="user"]',
     ) as HTMLElement | null
     if (!userArticle) return false
 
@@ -204,7 +153,7 @@ function isRelevantMutation(m: MutationRecord): boolean {
 
 export function observePrompts(
   onUpdate: (items: PromptItem[]) => void,
-  root: ParentNode = document
+  root: ParentNode = document,
 ) {
   let lastSignature: string | null = null
 
@@ -220,8 +169,6 @@ export function observePrompts(
           i.currentVersion,
           i.totalVersions,
           i.isEditing ? 1 : 0,
-          i.hasCode ? 1 : 0,
-          i.codeLang ?? '',
           t.length,
           t.slice(0, 80),
         ].join('|')

@@ -16,8 +16,6 @@ import { Collapse } from './icons/Collapse'
 import { Locked } from './icons/Locked'
 import { Toast } from './Toast'
 
-type ProNudge = { reason: string; ts: number } | null
-
 type Props = {
   items: PromptItem[]
   onJump: (id: string) => void
@@ -30,8 +28,7 @@ type Props = {
   onToggle: () => void
   onNextPrompt: () => void
   onPreviousPrompt: () => void
-  onRequirePro?: (reason: string) => void
-  proNudge: ProNudge
+  onRequirePro?: (message: string) => void
   isPro: boolean
   toast?: {
     message: string
@@ -56,7 +53,6 @@ export default function Sidebar({
   onNextPrompt,
   onPreviousPrompt,
   onRequirePro,
-  proNudge,
   isPro,
   toast,
   onDismissToast,
@@ -121,12 +117,6 @@ export default function Sidebar({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [view, onNextPrompt, onPreviousPrompt, canGoNext, canGoPrevious])
-
-  useEffect(() => {
-    if (!proNudge) return
-    setView('settings')
-    if (!isOpen) onToggle()
-  }, [proNudge?.ts])
 
   return (
     <>
@@ -322,18 +312,6 @@ export default function Sidebar({
                 >
                   <div class='item-meta'>
                     <span class='meta--index'>{idx + 1}</span>
-                    {p.hasCode && (
-                      <span
-                        class='badge'
-                        title={
-                          p.codeLang
-                            ? `Contains code (${p.codeLang})`
-                            : 'Contains code'
-                        }
-                      >
-                        {p.codeLang ? p.codeLang : <Code size={11} />}
-                      </span>
-                    )}
                   </div>
 
                   <div class='text-row'>
@@ -399,7 +377,9 @@ export default function Sidebar({
                           class='badge__locked-btn badge__btn--iconlabel'
                           onClick={(e) => {
                             e.stopPropagation()
-                            onRequirePro?.('branch_versions')
+                            onRequirePro?.(
+                              'Branch detection & navigation are pro features. Upgrade to access.',
+                            )
                           }}
                           title='Version history & branching is available on Pro'
                         >

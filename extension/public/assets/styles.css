@@ -689,7 +689,7 @@ TOOLTIP
 
 .toast-overlay {
   position: absolute;
-  top: 0rem;
+  bottom: 2rem;
   z-index: 1000;
 
   /* don't block list interactions */
