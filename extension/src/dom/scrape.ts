@@ -86,11 +86,44 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   })
 }
 
+/**
+ * --- NEW: scope helpers ---
+ * We observe document.body but ignore anything outside #thread.
+ */
+function getThreadRoot(): HTMLElement | null {
+  // If your app sometimes uses a different container, you can OR selectors here.
+  return (
+    document.getElementById('thread') ||
+    document.querySelector<HTMLElement>('[data-testid="thread"]') ||
+    document.querySelector<HTMLElement>(
+      '[data-testid="conversation-thread"]',
+    ) ||
+    document.querySelector<HTMLElement>('main') // last-resort
+  )
+}
+
+function nodeIsInThread(node: Node): boolean {
+  const thread = getThreadRoot()
+  if (!thread) return true // if thread not found, don't accidentally ignore everything
+
+  if (node === thread) return true
+
+  // element targets
+  if (node instanceof HTMLElement) return thread.contains(node)
+
+  // text/comment nodes: check parent
+  const parent = node.parentElement
+  return !!parent && thread.contains(parent)
+}
+
 function isRelevantMutationBatch(mutations: MutationRecord[]): boolean {
   return mutations.some(isRelevantMutation)
 }
 
 function isRelevantMutation(m: MutationRecord): boolean {
+  // --- NEW: ignore mutations outside #thread ---
+  if (!nodeIsInThread(m.target)) return false
+
   if (m.type === 'childList') {
     const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]
 
@@ -151,6 +184,23 @@ function isRelevantMutation(m: MutationRecord): boolean {
   return false
 }
 
+/**
+ * --- NEW: editing detection ---
+ * Debounce sidebar updates while an editor is focused (typing).
+ */
+function isEditorFocused(): boolean {
+  const thread = getThreadRoot()
+
+  // If thread isn't mounted yet, fall back to document-level focus check.
+  const scope: ParentNode = thread ?? document
+
+  // textarea focus OR contenteditable focus
+  const focused = scope.querySelector(
+    'textarea:focus, [contenteditable="true"]:focus',
+  )
+  return !!focused
+}
+
 export function observePrompts(
   onUpdate: (items: PromptItem[]) => void,
   root: ParentNode = document,
@@ -184,7 +234,24 @@ export function observePrompts(
   const settle = (fn: () => void) => requestAnimationFrame(fn)
 
   let scheduled = false
+
+  // --- NEW: debounce timer used while editing ---
+  let typingDebounce: number | null = null
+  const TYPING_DEBOUNCE_MS = 250
+
   const schedule = () => {
+    // If we’re actively typing, debounce emits.
+    if (isEditorFocused()) {
+      if (typingDebounce) window.clearTimeout(typingDebounce)
+      typingDebounce = window.setTimeout(() => {
+        typingDebounce = null
+        // do not block by "scheduled" flag here; typing replaces it anyway
+        settle(emit)
+      }, TYPING_DEBOUNCE_MS)
+      return
+    }
+
+    // Normal (non-typing) path: coalesce via rAF like before.
     if (scheduled) return
     scheduled = true
     settle(() => {
@@ -193,10 +260,8 @@ export function observePrompts(
     })
   }
 
-  const observerTarget =
-    root instanceof Document
-      ? root.body || document.body
-      : (root as Element | DocumentFragment)
+  // --- CHANGED: always observe document.body (stable across navigation) ---
+  const observerTarget = document.body || document.documentElement
 
   const mo = new MutationObserver((mutations) => {
     const relevant = isRelevantMutationBatch(mutations)
@@ -219,5 +284,9 @@ export function observePrompts(
   })
 
   settle(emit)
-  return () => mo.disconnect()
+
+  return () => {
+    if (typingDebounce) window.clearTimeout(typingDebounce)
+    mo.disconnect()
+  }
 }

@@ -433,17 +433,16 @@ function App({
   }, [layoutRoot, originalLayoutPaddingRight, isOpen])
 
   useEffect(() => {
-    const rootNode = chatRoot ?? document
     const stop = observePrompts((next) => {
       setItems(next)
       const nextScroller = next[0]?.el
         ? getScrollParent(next[0].el)
         : scrollerRef.current
       scrollerRef.current = nextScroller
-    }, rootNode)
+    }, document)
 
     return () => stop()
-  }, [chatRoot])
+  }, [])
 
   useEffect(() => {
     const onResize = () => {
