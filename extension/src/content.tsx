@@ -431,6 +431,7 @@ function App({
   const appliedLayoutRef = useRef<HTMLElement | null>(null)
   const appliedPrevPaddingRef = useRef<string>('')
   const appliedPrevTransitionRef = useRef<string>('')
+  const appliedBasePaddingRef = useRef<number>(0)
 
   useEffect(() => {
     // If sidebar isn't shown on this page, remove any applied padding.
@@ -444,27 +445,35 @@ function App({
       return
     }
 
-    // ✅ Always resolve the CURRENT layout root at the moment we need it.
     const el = findLayoutRoot()
     if (!el || !el.isConnected) return
 
-    // Restore any previous element if we switched layout roots between pages
     const prevEl = appliedLayoutRef.current
+
+    // If we switched layout roots, restore the old one.
     if (prevEl && prevEl !== el && prevEl.isConnected) {
       prevEl.style.paddingRight = appliedPrevPaddingRef.current
       prevEl.style.transition = appliedPrevTransitionRef.current
     }
 
-    appliedLayoutRef.current = el
-    appliedPrevPaddingRef.current = el.style.paddingRight
-    appliedPrevTransitionRef.current = el.style.transition
+    // If this is a new element, capture baselines for THIS element once.
+    if (prevEl !== el) {
+      appliedLayoutRef.current = el
+      appliedPrevPaddingRef.current = el.style.paddingRight
+      appliedPrevTransitionRef.current = el.style.transition
+
+      // Baseline = computed padding BEFORE we apply our extra.
+      // Temporarily clear our inline paddingRight so computed style reflects the page's real base.
+      const savedInline = el.style.paddingRight
+      el.style.paddingRight = appliedPrevPaddingRef.current
+      appliedBasePaddingRef.current =
+        parseFloat(getComputedStyle(el).paddingRight || '0') || 0
+      el.style.paddingRight = savedInline
+    }
 
     const OPEN_WIDTH = 280
     const MINI_WIDTH = 52
     const extra = isOpen ? OPEN_WIDTH : MINI_WIDTH
-
-    // Use computed padding as the base (works even if inline style is empty)
-    const base = parseFloat(getComputedStyle(el).paddingRight || '0') || 0
 
     const t = el.style.transition || ''
     if (!t.includes('padding-right')) {
@@ -473,10 +482,10 @@ function App({
         : 'padding-right 0.18s ease-out'
     }
 
-    el.style.paddingRight = `${base + extra}px`
+    // ✅ Use baseline (never accumulates)
+    el.style.paddingRight = `${appliedBasePaddingRef.current + extra}px`
 
     return () => {
-      // Cleanup for this render pass (in case dependencies change)
       if (!el.isConnected) return
       el.style.paddingRight = appliedPrevPaddingRef.current
       el.style.transition = appliedPrevTransitionRef.current
