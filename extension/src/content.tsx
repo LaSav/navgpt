@@ -208,17 +208,7 @@ function shouldShowSidebarOnThisPage(): boolean {
   return true
 }
 
-function App({
-  shadowMount,
-  chatRoot,
-  layoutRoot,
-  originalLayoutPaddingRight,
-}: {
-  shadowMount: HTMLElement
-  chatRoot?: HTMLElement
-  layoutRoot?: HTMLElement
-  originalLayoutPaddingRight: string
-}) {
+function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [isOpen, setIsOpen] = useState(true)
@@ -595,30 +585,7 @@ async function main() {
 
   await loadStyles(root.shadow)
 
-  const mainEl = document.getElementById('main') as HTMLElement | null
-
-  // Chat root for your prompt observation logic
-  const chatRoot =
-    mainEl?.closest<HTMLElement>('[class*="container/main"]') ??
-    mainEl ??
-    undefined
-
-  const layoutRoot = findLayoutRoot()
-
-  let originalLayoutPaddingRight = '0px'
-  if (layoutRoot instanceof HTMLElement) {
-    originalLayoutPaddingRight = getComputedStyle(layoutRoot).paddingRight
-  }
-
-  render(
-    <App
-      shadowMount={root.mount}
-      chatRoot={chatRoot instanceof HTMLElement ? chatRoot : undefined}
-      layoutRoot={layoutRoot instanceof HTMLElement ? layoutRoot : undefined}
-      originalLayoutPaddingRight={originalLayoutPaddingRight}
-    />,
-    root.mount,
-  )
+  render(<App shadowMount={root.mount} />, root.mount)
 
   window.addEventListener('unload', () => {
     detachThemeSync()
