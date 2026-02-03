@@ -43,9 +43,99 @@ function parseRevisionInfo(article: HTMLElement | null) {
   }
 }
 
+/**
+ * --- NEW: thread / scrape root helpers ---
+ * IMPORTANT: Only scrape inside the active thread.
+ * If no thread exists, treat as empty (clears sidebar).
+ */
+function getThreadRoot(): HTMLElement | null {
+  const candidates: HTMLElement[] = []
+
+  const byId = document.getElementById('thread')
+  if (byId) candidates.push(byId)
+
+  candidates.push(
+    ...Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[data-testid="thread"], [data-testid="conversation-thread"]',
+      ),
+    ),
+  )
+
+  // De-dupe
+  const uniq = Array.from(new Set(candidates)).filter(Boolean)
+
+  // ✅ Only consider it a "real chat thread" if it has message turns.
+  // Projects index has #thread but no article[data-turn], so this returns null.
+  const withTurns = uniq.filter((el) => el.querySelector('article[data-turn]'))
+
+  if (withTurns.length === 0) return null
+
+  // If there are multiple, prefer one that has user turns specifically.
+  return (
+    withTurns.find((el) => el.querySelector('article[data-turn="user"]')) ??
+    withTurns[0]
+  )
+}
+
+function getScrapeRoot(passedRoot: ParentNode): ParentNode | null {
+  // If caller passes a custom root, respect it.
+  if (passedRoot !== document) return passedRoot
+
+  // Default behavior: scope to the active thread only.
+  return getThreadRoot()
+}
+
+function nodeIsInThread(node: Node): boolean {
+  const thread = getThreadRoot()
+  if (!thread) return false
+
+  if (node === thread) return true
+
+  if (node instanceof HTMLElement) return thread.contains(node)
+
+  const parent = node.parentElement
+  return !!parent && thread.contains(parent)
+}
+
+function mutationAddsOrRemovesThread(m: MutationRecord): boolean {
+  if (m.type !== 'childList') return false
+
+  const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]
+
+  return nodes.some((n) => {
+    if (!(n instanceof HTMLElement)) return false
+
+    // direct match
+    if (n.id === 'thread') return true
+    if (
+      n.matches?.('[data-testid="thread"], [data-testid="conversation-thread"]')
+    )
+      return true
+
+    // nested match
+    if (n.querySelector?.('#thread')) return true
+    if (
+      n.querySelector?.(
+        '[data-testid="thread"], [data-testid="conversation-thread"]',
+      )
+    )
+      return true
+
+    return false
+  })
+}
+
+/**
+ * Scrape prompt articles ONLY from the active thread.
+ * If no thread exists (new chat / landing pages), returns [].
+ */
 export function scrapePrompts(root: ParentNode = document): PromptItem[] {
+  const scrapeRoot = getScrapeRoot(root)
+  if (!scrapeRoot) return []
+
   const articles = Array.from(
-    root.querySelectorAll<HTMLElement>('article[data-turn="user"]'),
+    scrapeRoot.querySelectorAll<HTMLElement>('article[data-turn="user"]'),
   )
 
   return articles.map((article) => {
@@ -86,42 +176,19 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   })
 }
 
-/**
- * --- NEW: scope helpers ---
- * We observe document.body but ignore anything outside #thread.
- */
-function getThreadRoot(): HTMLElement | null {
-  // If your app sometimes uses a different container, you can OR selectors here.
-  return (
-    document.getElementById('thread') ||
-    document.querySelector<HTMLElement>('[data-testid="thread"]') ||
-    document.querySelector<HTMLElement>(
-      '[data-testid="conversation-thread"]',
-    ) ||
-    document.querySelector<HTMLElement>('main') // last-resort
-  )
-}
-
-function nodeIsInThread(node: Node): boolean {
-  const thread = getThreadRoot()
-  if (!thread) return true // if thread not found, don't accidentally ignore everything
-
-  if (node === thread) return true
-
-  // element targets
-  if (node instanceof HTMLElement) return thread.contains(node)
-
-  // text/comment nodes: check parent
-  const parent = node.parentElement
-  return !!parent && thread.contains(parent)
-}
-
 function isRelevantMutationBatch(mutations: MutationRecord[]): boolean {
   return mutations.some(isRelevantMutation)
 }
 
 function isRelevantMutation(m: MutationRecord): boolean {
-  // --- NEW: ignore mutations outside #thread ---
+  const thread = getThreadRoot()
+
+  // ✅ If no thread exists, ONLY react to thread being added/removed.
+  if (!thread) {
+    return mutationAddsOrRemovesThread(m)
+  }
+
+  // ✅ Ignore mutations outside the thread once it exists.
   if (!nodeIsInThread(m.target)) return false
 
   if (m.type === 'childList') {
@@ -185,16 +252,13 @@ function isRelevantMutation(m: MutationRecord): boolean {
 }
 
 /**
- * --- NEW: editing detection ---
+ * --- editing detection ---
  * Debounce sidebar updates while an editor is focused (typing).
  */
 function isEditorFocused(): boolean {
   const thread = getThreadRoot()
-
-  // If thread isn't mounted yet, fall back to document-level focus check.
   const scope: ParentNode = thread ?? document
 
-  // textarea focus OR contenteditable focus
   const focused = scope.querySelector(
     'textarea:focus, [contenteditable="true"]:focus',
   )
@@ -206,8 +270,16 @@ export function observePrompts(
   root: ParentNode = document,
 ) {
   let lastSignature: string | null = null
+  let lastThread: HTMLElement | null = null
 
   const emit = () => {
+    // ✅ Force refresh when entering/leaving/changing thread
+    const threadNow = getThreadRoot()
+    if (threadNow !== lastThread) {
+      lastThread = threadNow
+      lastSignature = null
+    }
+
     const items = scrapePrompts(root)
 
     const signature = items
@@ -235,23 +307,19 @@ export function observePrompts(
 
   let scheduled = false
 
-  // --- NEW: debounce timer used while editing ---
   let typingDebounce: number | null = null
   const TYPING_DEBOUNCE_MS = 250
 
   const schedule = () => {
-    // If we’re actively typing, debounce emits.
     if (isEditorFocused()) {
       if (typingDebounce) window.clearTimeout(typingDebounce)
       typingDebounce = window.setTimeout(() => {
         typingDebounce = null
-        // do not block by "scheduled" flag here; typing replaces it anyway
         settle(emit)
       }, TYPING_DEBOUNCE_MS)
       return
     }
 
-    // Normal (non-typing) path: coalesce via rAF like before.
     if (scheduled) return
     scheduled = true
     settle(() => {
@@ -260,7 +328,6 @@ export function observePrompts(
     })
   }
 
-  // --- CHANGED: always observe document.body (stable across navigation) ---
   const observerTarget = document.body || document.documentElement
 
   const mo = new MutationObserver((mutations) => {

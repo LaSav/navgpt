@@ -189,6 +189,25 @@ function scrollSidebarActiveIntoView(
   }
 }
 
+function shouldShowSidebarOnThisPage(): boolean {
+  const thread = document.getElementById('thread')
+  if (!thread) return false
+
+  // Detect Projects index: it renders a list of project conversations inside #thread
+  // (your pasted DOM contains li.group/project-item and data-testid=project-conversation-overflow-menu)
+  const hasProjectChatList = !!thread.querySelector(
+    'li[class*="group/project-item"], [data-testid="project-conversation-overflow-menu"], [data-testid="project-conversation-overflow-date"]',
+  )
+
+  // If it's the projects index list view (and not an actual chat), hide sidebar.
+  // (Real chats will have article[data-turn], projects index won't.)
+  const hasTurns = !!thread.querySelector('article[data-turn]')
+  if (hasProjectChatList && !hasTurns) return false
+
+  // Otherwise: show on chat pages AND on "new chat" pages (thread exists, no turns yet).
+  return true
+}
+
 function App({
   shadowMount,
   chatRoot,
@@ -204,6 +223,10 @@ function App({
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [isOpen, setIsOpen] = useState(true)
   const [isPro, setIsPro] = useState(false)
+  const [shouldShow, setShouldShow] = useState(() =>
+    shouldShowSidebarOnThisPage(),
+  )
+
   const [toast, setToast] = useState<{
     message: string
     actionLabel?: string
@@ -238,7 +261,7 @@ function App({
       const q = await consumeDailyQuota(1)
       if (!q.ok) {
         showLockedToast(
-          'Editing from the side panel is a pro feature. Upgrade to access.',
+          "You've reached the daily limit for this action. Upgrade to Pro to continue using this feature.",
           'Upgrade',
         )
         return
@@ -311,7 +334,7 @@ function App({
       const q = await consumeDailyQuota(1)
       if (!q.ok) {
         showLockedToast(
-          'Editing from the side panel is a pro feature. Upgrade to access.',
+          "You've reached the daily limit for this action. Upgrade to Pro to continue using this feature.",
           'Upgrade',
         )
         return
@@ -405,34 +428,67 @@ function App({
 
   const handleToggle = () => setIsOpen((prev) => !prev)
 
-  const OPEN_WIDTH = 280
-  const MINI_WIDTH = 52
+  const appliedLayoutRef = useRef<HTMLElement | null>(null)
+  const appliedPrevPaddingRef = useRef<string>('')
+  const appliedPrevTransitionRef = useRef<string>('')
 
   useEffect(() => {
-    if (!layoutRoot) return
+    // If sidebar isn't shown on this page, remove any applied padding.
+    if (!shouldShow) {
+      const prevEl = appliedLayoutRef.current
+      if (prevEl && prevEl.isConnected) {
+        prevEl.style.paddingRight = appliedPrevPaddingRef.current
+        prevEl.style.transition = appliedPrevTransitionRef.current
+      }
+      appliedLayoutRef.current = null
+      return
+    }
 
-    const prevPaddingRight = layoutRoot.style.paddingRight
-    const prevTransition = layoutRoot.style.transition
+    // ✅ Always resolve the CURRENT layout root at the moment we need it.
+    const el = findLayoutRoot()
+    if (!el || !el.isConnected) return
 
+    // Restore any previous element if we switched layout roots between pages
+    const prevEl = appliedLayoutRef.current
+    if (prevEl && prevEl !== el && prevEl.isConnected) {
+      prevEl.style.paddingRight = appliedPrevPaddingRef.current
+      prevEl.style.transition = appliedPrevTransitionRef.current
+    }
+
+    appliedLayoutRef.current = el
+    appliedPrevPaddingRef.current = el.style.paddingRight
+    appliedPrevTransitionRef.current = el.style.transition
+
+    const OPEN_WIDTH = 280
+    const MINI_WIDTH = 52
     const extra = isOpen ? OPEN_WIDTH : MINI_WIDTH
-    const base = parseFloat(originalLayoutPaddingRight || '0') || 0
 
-    const t = prevTransition || ''
+    // Use computed padding as the base (works even if inline style is empty)
+    const base = parseFloat(getComputedStyle(el).paddingRight || '0') || 0
+
+    const t = el.style.transition || ''
     if (!t.includes('padding-right')) {
-      layoutRoot.style.transition = t
+      el.style.transition = t
         ? `${t}, padding-right 0.18s ease-out`
         : 'padding-right 0.18s ease-out'
     }
 
-    layoutRoot.style.paddingRight = `${base + extra}px`
+    el.style.paddingRight = `${base + extra}px`
 
     return () => {
-      layoutRoot.style.paddingRight = prevPaddingRight
-      layoutRoot.style.transition = prevTransition
+      // Cleanup for this render pass (in case dependencies change)
+      if (!el.isConnected) return
+      el.style.paddingRight = appliedPrevPaddingRef.current
+      el.style.transition = appliedPrevTransitionRef.current
     }
-  }, [layoutRoot, originalLayoutPaddingRight, isOpen])
+  }, [shouldShow, isOpen])
 
   useEffect(() => {
+    if (!shouldShow) {
+      setItems([])
+      return
+    }
+
     const stop = observePrompts((next) => {
       setItems(next)
       const nextScroller = next[0]?.el
@@ -442,7 +498,7 @@ function App({
     }, document)
 
     return () => stop()
-  }, [])
+  }, [shouldShow])
 
   useEffect(() => {
     const onResize = () => {
@@ -469,7 +525,28 @@ function App({
     }
   }, [])
 
-  return (
+  useEffect(() => {
+    let raf = 0
+
+    const update = () => {
+      setShouldShow(shouldShowSidebarOnThisPage())
+    }
+
+    const mo = new MutationObserver(() => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(update)
+    })
+
+    mo.observe(document.documentElement, { childList: true, subtree: true })
+    update()
+
+    return () => {
+      mo.disconnect()
+      cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  return shouldShow ? (
     <Sidebar
       items={items}
       onJump={onJump}
@@ -487,7 +564,7 @@ function App({
       toast={toast}
       onDismissToast={() => setToast(null)}
     />
-  )
+  ) : null
 }
 
 async function main() {
