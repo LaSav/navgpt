@@ -229,12 +229,97 @@ export function observePrompts(
   onUpdate: (items: PromptItem[]) => void,
   root: ParentNode = document,
 ) {
-  const DEBUG = false
+  const DEBUG_PERF = localStorage.getItem('navgpt_debug_perf') === '1'
+
+  type PerfStats = {
+    // mutation side
+    moCallbacks: number
+    mutationRecords: number
+    relevantBatches: number
+    relevanceMsTotal: number
+    relevanceMsMax: number
+
+    // emit side
+    schedules: number
+    emits: number
+    scrapes: number
+    scrapeMsTotal: number
+    scrapeMsMax: number
+    sigMsTotal: number
+    sigMsMax: number
+    lastItemCount: number
+  }
+
+  const stats: PerfStats = {
+    moCallbacks: 0,
+    mutationRecords: 0,
+    relevantBatches: 0,
+    relevanceMsTotal: 0,
+    relevanceMsMax: 0,
+
+    schedules: 0,
+    emits: 0,
+    scrapes: 0,
+    scrapeMsTotal: 0,
+    scrapeMsMax: 0,
+    sigMsTotal: 0,
+    sigMsMax: 0,
+    lastItemCount: 0,
+  }
+
+  const fmt = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : '0.0')
+
+  let logTimer: number | null = null
+  if (DEBUG_PERF) {
+    logTimer = window.setInterval(() => {
+      const avgRel =
+        stats.relevantBatches > 0
+          ? stats.relevanceMsTotal / stats.relevantBatches
+          : 0
+      const avgScr = stats.scrapes > 0 ? stats.scrapeMsTotal / stats.scrapes : 0
+      const avgSig = stats.emits > 0 ? stats.sigMsTotal / stats.emits : 0
+
+      console.log('[NavGPT perf]', {
+        moCallbacks: stats.moCallbacks,
+        mutationRecords: stats.mutationRecords,
+        relevantBatches: stats.relevantBatches,
+        relevanceAvgMs: fmt(avgRel),
+        relevanceMaxMs: fmt(stats.relevanceMsMax),
+
+        schedules: stats.schedules,
+        emits: stats.emits,
+        scrapes: stats.scrapes,
+        scrapeAvgMs: fmt(avgScr),
+        scrapeMaxMs: fmt(stats.scrapeMsMax),
+        sigAvgMs: fmt(avgSig),
+        sigMaxMs: fmt(stats.sigMsMax),
+
+        lastItemCount: stats.lastItemCount,
+      })
+
+      // reset window stats so each log is “per 2 seconds”
+      stats.moCallbacks = 0
+      stats.mutationRecords = 0
+      stats.relevantBatches = 0
+      stats.relevanceMsTotal = 0
+      stats.relevanceMsMax = 0
+
+      stats.schedules = 0
+      stats.emits = 0
+      stats.scrapes = 0
+      stats.scrapeMsTotal = 0
+      stats.scrapeMsMax = 0
+      stats.sigMsTotal = 0
+      stats.sigMsMax = 0
+    }, 2000)
+  }
 
   let lastSignature: string | null = null
   let lastThread: HTMLElement | null = null
 
   const emit = () => {
+    if (DEBUG_PERF) stats.emits++
+
     // Force refresh when entering/leaving/changing thread
     const threadNow = getThreadRoot()
     if (threadNow !== lastThread) {
@@ -242,8 +327,17 @@ export function observePrompts(
       lastSignature = null
     }
 
+    const s0 = DEBUG_PERF ? performance.now() : 0
     const items = scrapePrompts(root)
+    if (DEBUG_PERF) {
+      const dt = performance.now() - s0
+      stats.scrapes++
+      stats.scrapeMsTotal += dt
+      stats.scrapeMsMax = Math.max(stats.scrapeMsMax, dt)
+      stats.lastItemCount = items.length
+    }
 
+    const g0 = DEBUG_PERF ? performance.now() : 0
     const signature = items
       .map((i) => {
         const t = i.rawText || i.text || ''
@@ -259,6 +353,12 @@ export function observePrompts(
       })
       .join('||')
 
+    if (DEBUG_PERF) {
+      const dt = performance.now() - g0
+      stats.sigMsTotal += dt
+      stats.sigMsMax = Math.max(stats.sigMsMax, dt)
+    }
+
     if (signature === lastSignature) return
     lastSignature = signature
 
@@ -272,6 +372,7 @@ export function observePrompts(
   const TYPING_DEBOUNCE_MS = 250
 
   const schedule = () => {
+    if (DEBUG_PERF) stats.schedules++
     if (isEditorFocused()) {
       if (typingDebounce) window.clearTimeout(typingDebounce)
       typingDebounce = window.setTimeout(() => {
@@ -301,8 +402,23 @@ export function observePrompts(
     getThreadRoot() ?? document.body ?? document.documentElement
 
   const primaryObserver = new MutationObserver((mutations) => {
-    if (DEBUG) console.debug('[NavGPT] primary mutations', mutations)
-    if (isRelevantMutationBatch(mutations)) schedule()
+    if (DEBUG_PERF) {
+      stats.moCallbacks++
+      stats.mutationRecords += mutations.length
+    }
+
+    const t0 = DEBUG_PERF ? performance.now() : 0
+    const relevant = isRelevantMutationBatch(mutations)
+    if (DEBUG_PERF) {
+      const dt = performance.now() - t0
+      if (relevant) {
+        stats.relevantBatches++
+        stats.relevanceMsTotal += dt
+        stats.relevanceMsMax = Math.max(stats.relevanceMsMax, dt)
+      }
+    }
+
+    if (relevant) schedule()
   })
 
   const observePrimary = (target: Node) => {
@@ -342,5 +458,6 @@ export function observePrompts(
     if (typingDebounce) window.clearTimeout(typingDebounce)
     primaryObserver.disconnect()
     threadWatcher.disconnect()
+    if (logTimer) window.clearInterval(logTimer)
   }
 }
