@@ -61,17 +61,27 @@ function getTopOverlayOffset(): number {
 
 // Load CSS into the shadow root
 async function loadStyles(shadow: ShadowRoot) {
-  try {
-    const url = chrome.runtime.getURL('assets/styles.css')
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Failed to load CSS: ${res.status}`)
-    const css = await res.text()
-    const style = document.createElement('style')
-    style.textContent = css
-    shadow.appendChild(style)
-  } catch (err) {
-    console.warn('[prompt-sidebar] Failed to load styles', err)
-  }
+  const href = chrome.runtime.getURL('assets/styles.css')
+
+  // Avoid double-inserting if main() runs more than once
+  const existing = shadow.querySelector<HTMLLinkElement>(
+    `link[rel="stylesheet"][href="${CSS.escape(href)}"]`,
+  )
+  if (existing) return
+
+  await new Promise<void>((resolve) => {
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = href
+
+    link.onload = () => resolve()
+    link.onerror = () => {
+      console.warn('[prompt-sidebar] Failed to load stylesheet', href)
+      resolve() // don’t block mounting forever
+    }
+
+    shadow.appendChild(link)
+  })
 }
 
 // Shadow root mount
