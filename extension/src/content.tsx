@@ -5,20 +5,23 @@ import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
 import { hasProAccess, requireProAccess } from './entitlement/gate'
 import { consumeDailyQuota } from './entitlement/dailyLimit'
+import { shouldShowSidebar } from './dom/page'
+import { SEL } from './dom/selectors'
 
+/** Helpers for selector constants that include leading '#' */
+function idFromSelector(sel: string): string {
+  return sel.replace(/^#/, '')
+}
+
+/**
+ * Find a stable container that includes both the header and main content.
+ * We pad this element on the right so the page shifts instead of the sidebar overlapping content.
+ */
 function findLayoutRoot(): HTMLElement {
-  const header =
-    document.querySelector<HTMLElement>('#page-header') ||
-    document.querySelector<HTMLElement>('[data-testid="top-bar"]') ||
-    document.querySelector<HTMLElement>('header')
+  const header = document.querySelector<HTMLElement>(SEL.header)
+  const main = document.querySelector<HTMLElement>(SEL.main)
 
-  const main =
-    document.querySelector<HTMLElement>('#main') ||
-    document.querySelector<HTMLElement>('main')
-
-  if (!header || !main) {
-    return document.body
-  }
+  if (!header || !main) return document.body
 
   // Collect ancestor chains up to but NOT including <body>/<html>
   const chain = (el: HTMLElement) => {
@@ -35,25 +38,19 @@ function findLayoutRoot(): HTMLElement {
 
   const headerChain = chain(header)
   const mainChain = chain(main)
-
   const mainSet = new Set(mainChain)
 
+  // Lowest common ancestor between header and main
   for (let i = headerChain.length - 1; i >= 0; i--) {
     const candidate = headerChain[i]
-    if (mainSet.has(candidate)) {
-      return candidate
-    }
+    if (mainSet.has(candidate)) return candidate
   }
 
   return document.body
 }
 
 function getTopOverlayOffset(): number {
-  const header =
-    document.querySelector<HTMLElement>('#page-header') ||
-    document.querySelector<HTMLElement>('[data-testid="top-bar"]') ||
-    document.querySelector<HTMLElement>('header')
-
+  const header = document.querySelector<HTMLElement>(SEL.header)
   if (!header) return 0
 
   const pos = getComputedStyle(header).position
@@ -79,16 +76,18 @@ async function loadStyles(shadow: ShadowRoot) {
 
 // Shadow root mount
 function mountSidebar() {
-  if (document.getElementById('prompt-sidebar-root')) return null
+  const hostId = idFromSelector(SEL.sidebarHostId)
+  const mountId = idFromSelector(SEL.sidebarMountId)
+
+  if (document.getElementById(hostId)) return null
 
   const host = document.createElement('div')
-  host.id = 'prompt-sidebar-root'
-
+  host.id = hostId
   document.body.appendChild(host)
 
   const shadow = host.attachShadow({ mode: 'open' })
   const mount = document.createElement('div')
-  mount.id = 'prompt-sidebar-mount'
+  mount.id = mountId
   shadow.appendChild(mount)
 
   return { host, shadow, mount }
@@ -108,8 +107,7 @@ function getScrollParent(node: HTMLElement): HTMLElement {
 
 function snapToPrompt(targetEl: HTMLElement) {
   const article =
-    (targetEl.closest('article[data-turn="user"]') as HTMLElement | null) ??
-    targetEl
+    (targetEl.closest(SEL.userTurn) as HTMLElement | null) ?? targetEl
   if (!article.isConnected) return
 
   const scroller = getScrollParent(article)
@@ -150,10 +148,7 @@ function snapToPrompt(targetEl: HTMLElement) {
       const delta = rect.top - viewportTop - overlay
 
       if (Math.abs(delta) > minCorrectPx) {
-        scroller.scrollBy({
-          top: delta,
-          behavior: 'smooth',
-        })
+        scroller.scrollBy({ top: delta, behavior: 'smooth' })
       }
       return
     }
@@ -171,15 +166,22 @@ function scrollSidebarActiveIntoView(
   activeId?: string,
 ) {
   if (!activeId) return
-  const list = shadowMount.querySelector('.list') as HTMLElement | null
+
+  const list = shadowMount.querySelector(SEL.sidebarList) as HTMLElement | null
+
+  // SEL.sidebarItem is ".item[data-prompt-id]"; derive ".item" so we can add =id
+  const itemBase = SEL.sidebarItem.split('[')[0] || '.item'
   const btn = shadowMount.querySelector<HTMLElement>(
-    `.item[data-prompt-id="${CSS.escape(activeId)}"]`,
+    `${itemBase}[data-prompt-id="${CSS.escape(activeId)}"]`,
   )
+
   if (!list || !btn) return
+
   const b = btn.getBoundingClientRect()
   const l = list.getBoundingClientRect()
   const isAbove = b.top < l.top + 8
   const isBelow = b.bottom > l.bottom - 8
+
   if (isAbove || isBelow) {
     btn.scrollIntoView({
       block: isAbove ? 'start' : 'end',
@@ -189,23 +191,84 @@ function scrollSidebarActiveIntoView(
   }
 }
 
-function shouldShowSidebarOnThisPage(): boolean {
-  const thread = document.getElementById('thread')
-  if (!thread) return false
+/**
+ * Tight "page visibility" watchers:
+ * - react to SPA navigation (pushState/replaceState/popstate)
+ * - react when thread roots appear/disappear (lightweight MO, not full subtree churn)
+ */
+function installNavigationWatcher(onChange: () => void): () => void {
+  const win = window as any
 
-  // Detect Projects index: it renders a list of project conversations inside #thread
-  // (your pasted DOM contains li.group/project-item and data-testid=project-conversation-overflow-menu)
-  const hasProjectChatList = !!thread.querySelector(
-    'li[class*="group/project-item"], [data-testid="project-conversation-overflow-menu"], [data-testid="project-conversation-overflow-date"]',
-  )
+  // Avoid double-install if hot-reloaded
+  if (win.__navgptNavWatcherInstalled) return () => {}
+  win.__navgptNavWatcherInstalled = true
 
-  // If it's the projects index list view (and not an actual chat), hide sidebar.
-  // (Real chats will have article[data-turn], projects index won't.)
-  const hasTurns = !!thread.querySelector('article[data-turn]')
-  if (hasProjectChatList && !hasTurns) return false
+  const notify = () => onChange()
 
-  // Otherwise: show on chat pages AND on "new chat" pages (thread exists, no turns yet).
-  return true
+  const origPush = history.pushState
+  const origReplace = history.replaceState
+
+  history.pushState = function (
+    this: History,
+    ...args: Parameters<History['pushState']>
+  ) {
+    const r = origPush.apply(this, args)
+    window.dispatchEvent(new Event('navgpt:locationchange'))
+    return r
+  }
+
+  history.replaceState = function (
+    this: History,
+    ...args: Parameters<History['replaceState']>
+  ) {
+    const r = origReplace.apply(this, args)
+    window.dispatchEvent(new Event('navgpt:locationchange'))
+    return r
+  }
+
+  const onPop = () => window.dispatchEvent(new Event('navgpt:locationchange'))
+  window.addEventListener('popstate', onPop)
+  window.addEventListener('hashchange', onPop)
+
+  const onLoc = () => notify()
+  window.addEventListener('navgpt:locationchange', onLoc)
+
+  // Lightweight observer: only care about thread roots being added/removed.
+  const mo = new MutationObserver((mutations) => {
+    let changed = false
+    for (const m of mutations) {
+      if (m.type !== 'childList') continue
+      const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]
+      if (
+        nodes.some(
+          (n) =>
+            n instanceof HTMLElement &&
+            (n.matches?.(SEL.threadRoots) ||
+              !!n.querySelector?.(SEL.threadRoots)),
+        )
+      ) {
+        changed = true
+        break
+      }
+    }
+    if (changed) notify()
+  })
+
+  mo.observe(document.documentElement, { childList: true, subtree: true })
+
+  // fire once now
+  notify()
+
+  return () => {
+    // restore history methods
+    history.pushState = origPush
+    history.replaceState = origReplace
+    window.removeEventListener('popstate', onPop)
+    window.removeEventListener('hashchange', onPop)
+    window.removeEventListener('navgpt:locationchange', onLoc)
+    mo.disconnect()
+    win.__navgptNavWatcherInstalled = false
+  }
 }
 
 function App({ shadowMount }: { shadowMount: HTMLElement }) {
@@ -213,9 +276,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [isOpen, setIsOpen] = useState(true)
   const [isPro, setIsPro] = useState(false)
-  const [shouldShow, setShouldShow] = useState(() =>
-    shouldShowSidebarOnThisPage(),
-  )
+  const [shouldShow, setShouldShow] = useState(() => shouldShowSidebar())
 
   const [toast, setToast] = useState<{
     message: string
@@ -231,10 +292,10 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     window.open('https://navgpt.app/', '_blank', 'noopener,noreferrer')
   }
 
-  const showLockedToast = async (message: string, actionLabel: string) => {
+  const showLockedToast = (message: string, actionLabel: string) => {
     setToast({
-      message: message,
-      actionLabel: actionLabel,
+      message,
+      actionLabel,
       onAction: () => {
         setToast(null)
         openUpgradePage()
@@ -242,21 +303,26 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     })
   }
 
+  const requireQuotaOrPro = async (): Promise<boolean> => {
+    const pro = await hasProAccess()
+    if (pro) return true
+
+    const q = await consumeDailyQuota(1)
+    if (!q.ok) {
+      showLockedToast(
+        "You've reached the daily limit for this action. Upgrade to Pro to continue using this feature.",
+        'Upgrade',
+      )
+      return false
+    }
+    return true
+  }
+
   const onJump = async (id: string) => {
     const target = items.find((i) => i.id === id)?.el
     if (!target) return
 
-    const isPro = await hasProAccess()
-    if (!isPro) {
-      const q = await consumeDailyQuota(1)
-      if (!q.ok) {
-        showLockedToast(
-          "You've reached the daily limit for this action. Upgrade to Pro to continue using this feature.",
-          'Upgrade',
-        )
-        return
-      }
-    }
+    if (!(await requireQuotaOrPro())) return
 
     snapToPrompt(target)
     setActiveId(id)
@@ -272,19 +338,19 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       )
       return
     }
+
     const item = items.find((i) => i.id === id)
     if (!item) return
 
     const article =
-      (item.el.closest('article[data-turn="user"]') as HTMLElement | null) ||
-      item.el
+      (item.el.closest(SEL.userTurn) as HTMLElement | null) || item.el
 
     snapToPrompt(article)
     setActiveId(id)
     scrollSidebarActiveIntoView(shadowMount, id)
 
     const focusTextarea = () => {
-      const textarea = article.querySelector<HTMLTextAreaElement>('textarea')
+      const textarea = article.querySelector<HTMLTextAreaElement>(SEL.textarea)
       if (textarea) {
         textarea.focus()
         const len = textarea.value.length
@@ -292,24 +358,19 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       }
     }
 
-    if (article.querySelector('textarea')) {
+    if (article.querySelector(SEL.textarea)) {
       focusTextarea()
       return
     }
 
     const editButton =
-      article.querySelector<HTMLButtonElement>(
-        'button[aria-label="Edit message"]',
-      ) ||
-      article.querySelector<HTMLButtonElement>('button[aria-label^="Edit"]')
+      article.querySelector<HTMLButtonElement>(SEL.editMessageButtonExact) ||
+      article.querySelector<HTMLButtonElement>(SEL.editMessageButtonPrefix)
 
     if (!editButton) return
 
     editButton.click()
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(focusTextarea)
-    })
+    requestAnimationFrame(() => requestAnimationFrame(focusTextarea))
   }
 
   const onCopy = async (id: string) => {
@@ -319,20 +380,10 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     const textToCopy = item.rawText || item.text
     if (!textToCopy) return
 
-    const isPro = await hasProAccess()
-    if (!isPro) {
-      const q = await consumeDailyQuota(1)
-      if (!q.ok) {
-        showLockedToast(
-          "You've reached the daily limit for this action. Upgrade to Pro to continue using this feature.",
-          'Upgrade',
-        )
-        return
-      }
-    }
+    if (!(await requireQuotaOrPro())) return
 
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
+      if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(textToCopy)
       } else {
         const ta = document.createElement('textarea')
@@ -360,25 +411,21 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       return
     }
 
-    // (optional) keep local entitlement in sync
+    // keep local entitlement in sync
     setIsPro(true)
 
     const item = items.find((i) => i.id === id)
     if (!item) return
 
     const article =
-      (item.el.closest('article[data-turn="user"]') as HTMLElement | null) ||
-      item.el
+      (item.el.closest(SEL.userTurn) as HTMLElement | null) || item.el
 
     snapToPrompt(article)
     setActiveId(id)
     scrollSidebarActiveIntoView(shadowMount, id)
 
     const selector =
-      direction === -1
-        ? 'button[aria-label="Previous response"]'
-        : 'button[aria-label="Next response"]'
-
+      direction === -1 ? SEL.prevResponseButton : SEL.nextResponseButton
     const btn = article.querySelector<HTMLButtonElement>(selector)
     if (!btn) return
 
@@ -397,27 +444,23 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     const currentIndex = activeId
       ? items.findIndex((i) => i.id === activeId)
       : -1
+    const nextIndex =
+      currentIndex === -1
+        ? direction === 1
+          ? 0
+          : items.length - 1
+        : currentIndex + direction
 
-    let nextIndex: number
-
-    if (currentIndex === -1) {
-      nextIndex = direction === 1 ? 0 : items.length - 1
-    } else {
-      nextIndex = currentIndex + direction
-    }
     if (nextIndex < 0 || nextIndex >= items.length) return
-
     const nextItem = items[nextIndex]
-    if (nextItem) {
-      onJump(nextItem.id)
-    }
+    if (nextItem) onJump(nextItem.id)
   }
 
   const handleNextPrompt = () => goToPromptByOffset(1)
   const handlePreviousPrompt = () => goToPromptByOffset(-1)
-
   const handleToggle = () => setIsOpen((prev) => !prev)
 
+  // Padding application bookkeeping
   const appliedLayoutRef = useRef<HTMLElement | null>(null)
   const appliedPrevPaddingRef = useRef<string>('')
   const appliedPrevTransitionRef = useRef<string>('')
@@ -446,19 +489,13 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       prevEl.style.transition = appliedPrevTransitionRef.current
     }
 
-    // If this is a new element, capture baselines for THIS element once.
+    // Capture baselines for THIS element once.
     if (prevEl !== el) {
       appliedLayoutRef.current = el
       appliedPrevPaddingRef.current = el.style.paddingRight
       appliedPrevTransitionRef.current = el.style.transition
-
-      // Baseline = computed padding BEFORE we apply our extra.
-      // Temporarily clear our inline paddingRight so computed style reflects the page's real base.
-      const savedInline = el.style.paddingRight
-      el.style.paddingRight = appliedPrevPaddingRef.current
       appliedBasePaddingRef.current =
         parseFloat(getComputedStyle(el).paddingRight || '0') || 0
-      el.style.paddingRight = savedInline
     }
 
     const OPEN_WIDTH = 280
@@ -472,7 +509,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
         : 'padding-right 0.18s ease-out'
     }
 
-    // ✅ Use baseline (never accumulates)
+    // Use baseline (never accumulates)
     el.style.paddingRight = `${appliedBasePaddingRef.current + extra}px`
 
     return () => {
@@ -481,6 +518,14 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       el.style.transition = appliedPrevTransitionRef.current
     }
   }, [shouldShow, isOpen])
+
+  useEffect(() => {
+    // Tight watchers: navigation + thread root changes
+    const uninstall = installNavigationWatcher(() => {
+      setShouldShow(shouldShowSidebar())
+    })
+    return () => uninstall()
+  }, [])
 
   useEffect(() => {
     if (!shouldShow) {
@@ -521,27 +566,6 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     })()
     return () => {
       cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    let raf = 0
-
-    const update = () => {
-      setShouldShow(shouldShowSidebarOnThisPage())
-    }
-
-    const mo = new MutationObserver(() => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(update)
-    })
-
-    mo.observe(document.documentElement, { childList: true, subtree: true })
-    update()
-
-    return () => {
-      mo.disconnect()
-      cancelAnimationFrame(raf)
     }
   }, [])
 
