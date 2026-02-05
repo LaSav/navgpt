@@ -1,14 +1,85 @@
 /**
- * Heuristics to detect USER prompts in ChatGPT UI.
- * Tweak as needed. We target elements that represent a single user message.
+ * NavGPT DOM Contract
+ * -------------------
+ * Centralized selectors for interacting with the ChatGPT UI.
+ *
+ * Goals:
+ * - Keep all brittle, site-dependent selectors in one place.
+ * - Make content/scrape logic read like "intent", not CSS selector soup.
+ * - Make future ChatGPT DOM changes fixable by editing this file only.
+ *
+ * Notes:
+ * - Prefer stable attributes (data-testid, aria-label) over classes.
+ * - Keep selectors broad/defensive; ChatGPT markup changes frequently.
  */
-export const USER_MESSAGE_SELECTOR = [
-  // ChatGPT (Sept 2025-era): user messages often have data attributes like below.
-  '[data-message-author-role="user"]',
-  '[data-testid="user-message"]',
-  // Fallbacks / other chat UIs
-  '.user, .message.user, [role="article"][data-role="user"]',
-].join(',')
 
-/** Where to anchor the sidebar. */
-export const CHAT_ROOT_SELECTOR = 'main#main'
+export const SEL = {
+  /** Layout anchors (used for layout root + sticky header offset) */
+  header: '#page-header, [data-testid="top-bar"], header',
+  main: '#main, main',
+
+  /** Thread roots (active conversation container candidates) */
+  threadRoots:
+    '#thread, [data-testid="thread"], [data-testid="conversation-thread"]',
+
+  /** Chat turns */
+  turn: 'article[data-turn]',
+  userTurn: 'article[data-turn="user"]',
+
+  /** User message bubble (where we read the visible prompt text) */
+  userMessageBubble: [
+    '[data-message-author-role="user"]',
+    '[data-testid="user-message"]',
+    // fallbacks / older or alternate layouts
+    '.user',
+    '.message.user',
+    '[role="article"][data-role="user"]',
+  ].join(','),
+
+  /** Projects index/list view markers inside #thread */
+  projectsIndexMarkers: [
+    'li[class*="group/project-item"]',
+    '[data-testid="project-conversation-overflow-menu"]',
+    '[data-testid="project-conversation-overflow-date"]',
+  ].join(','),
+
+  /** Editing detection */
+  textarea: 'textarea',
+  editableSurface: 'textarea, [contenteditable="true"], form',
+  focusedEditor: 'textarea:focus, [contenteditable="true"]:focus',
+
+  /** Edit button(s) in a user turn */
+  editMessageButtonExact: 'button[aria-label="Edit message"]',
+  editMessageButtonPrefix: 'button[aria-label^="Edit"]',
+
+  /** Response version navigation in a turn */
+  prevResponseButton: 'button[aria-label="Previous response"]',
+  nextResponseButton: 'button[aria-label="Next response"]',
+
+  /** Revision counter inside a turn (e.g., "1 / 2") */
+  revisionCounter: '.tabular-nums, [class*="tabular-nums"]',
+
+  /** Misc UI heuristics used in main() to pick a chat root container */
+  mainContainerFallback: '[class*="container/main"]',
+
+  /** Sidebar host elements (injected by the extension) */
+  sidebarHostId: '#prompt-sidebar-root',
+  sidebarMountId: '#prompt-sidebar-mount',
+
+  /** Sidebar internal selectors (inside shadow DOM) */
+  sidebarList: '.list',
+  sidebarItem: '.item[data-prompt-id]',
+} as const
+
+/**
+ * Attribute names we consider relevant for MutationObserver
+ * (centralized so scrape.ts/content.tsx don't embed magic strings)
+ */
+export const MUTATION_ATTR_FILTER = [
+  'class',
+  'disabled',
+  'aria-disabled',
+  'aria-label',
+  'data-state',
+  'data-writing-block',
+] as const
