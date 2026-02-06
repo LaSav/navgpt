@@ -1,3 +1,16 @@
+/**
+ * Persistent storage layer for entitlement state.
+ *
+ * Data is stored in chrome.storage.local under two keys:
+ * - navgpt_trial: TrialState
+ * - navgpt_license: LicenseState
+ *
+ * Notes:
+ * - Reads return an empty object if nothing is stored yet; callers must handle undefined fields.
+ * - Writes replace the entire object; callers should spread the previous value to avoid dropping fields.
+ * - Storage is per-browser-profile and survives service worker restarts.
+ */
+
 import type { LicenseState, TrialState } from './types'
 
 const TRIAL_KEY = 'navgpt_trial'

@@ -1,3 +1,13 @@
+/**
+ * UI-facing entitlement gate.
+ *
+ * - hasProAccess(): quick check using the current entitlement state.
+ * - requireProAccess(): returns a UX-friendly result. If a paid license key exists but the
+ *   entitlement state may be stale, it may force a revalidation with the background worker.
+ *
+ * Default staleness window: 12 hours.
+ */
+
 type GateResult =
   | { ok: true; state: any }
   | { ok: false; state: any; reason: string }

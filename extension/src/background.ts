@@ -1,3 +1,20 @@
+/**
+ * MV3 Service Worker for NavGPT.
+ *
+ * Responsibilities:
+ * - Bootstrap entitlement state on install (start trial, ensure instance id).
+ * - Periodically validate stored license keys via chrome.alarms.
+ * - Provide an RPC-style message API for content/UI scripts:
+ *   - NAVGPT_ENSURE_TRIAL: create trial record if missing, return entitlement state
+ *   - NAVGPT_GET_STATE: return entitlement state
+ *   - NAVGPT_VALIDATE: validate license (optionally forced), return result + state
+ *   - NAVGPT_ACTIVATE: store/activate a license key, return result + state
+ *
+ * Notes:
+ * - Service workers are ephemeral; all durable state must live in chrome.storage.
+ * - Validation/activation are deduplicated using in-flight Promise locks.
+ */
+
 import {
   ensureTrialStarted,
   getEntitlementState,
@@ -6,8 +23,6 @@ import {
   ensureInstanceName,
 } from './entitlement/entitlement'
 import { getLicense } from './entitlement/storage'
-
-console.log('[navgpt] SW start')
 
 const ALARM_NAME = 'navgpt_validate'
 let inFlightValidate: Promise<any> | null = null

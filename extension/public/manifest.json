@@ -35,7 +35,7 @@
   "web_accessible_resources": [
     {
       "resources": ["assets/styles.css"],
-      "matches": ["https://chat.openai.com/*", "https://chatgpt.com/*"]
+      "matches": ["https://chatgpt.com/*"]
     }
   ]
 }

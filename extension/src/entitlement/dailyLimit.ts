@@ -1,4 +1,15 @@
-const LIMIT = 30
+/**
+ * Daily action quota (client-side) for free users.
+ *
+ * - Tracks a single pooled counter for quota-limited actions (e.g. jump + copy).
+ * - Resets at local midnight based on the user's system timezone.
+ * - Stored in chrome.storage.local under STORAGE_KEY.
+ *
+ * Note: storage updates are not atomic; concurrent consumption across tabs may undercount slightly.
+ * For strict accounting, move quota consumption into the background service worker and serialize updates.
+ */
+
+const LIMIT = 20
 const STORAGE_KEY = 'navgpt_daily_action_quota_v1'
 
 type State = {

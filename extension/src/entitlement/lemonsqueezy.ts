@@ -1,3 +1,17 @@
+/**
+ * Thin API client for the NavGPT license proxy (Cloudflare Worker).
+ *
+ * Responsibilities:
+ * - Send form-encoded activation and validation requests.
+ * - Return parsed JSON responses without business logic.
+ *
+ * Business rules (status mapping, grace logic, retries, etc.) live in entitlement.ts.
+ *
+ * Important:
+ * - This layer assumes the proxy returns JSON on both success and failure.
+ * - HTTP errors or invalid JSON will throw and be treated as network failures upstream.
+ */
+
 import { LICENSE_API_BASE } from './config'
 
 type ActivateResponse = {

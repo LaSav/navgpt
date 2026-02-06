@@ -37,6 +37,20 @@ function paidStatusFromLs(status?: string): PaidStatus {
   return 'none'
 }
 
+/**
+ * Computes the current entitlement tier from persisted trial + license state.
+ *
+ * Tier precedence (highest -> lowest):
+ * - disabled: license explicitly disabled by provider
+ * - expired: subscription expired
+ * - pro: active paid subscription
+ * - trial: within trial window
+ * - free: default
+ *
+ * Offline grace:
+ * If a paid license key is stored and we are within graceUntil (set on successful validations),
+ * we temporarily allow pro features even if we can't currently validate (e.g. offline/provider outage).
+ */
 function compute(
   now: number,
   trial: TrialState,
@@ -136,6 +150,15 @@ export async function activateLicenseKey(licenseKey: string, now = Date.now()) {
   return { ok: true as const }
 }
 
+/**
+ * Validates the saved license key with the licensing provider.
+ *
+ * - Respects nextValidateAt unless opts.force is true.
+ * - On success: updates paidStatus, sets graceUntil (offline grace), schedules nextValidateAt.
+ * - On invalid: updates paidStatus, clears graceUntil, schedules nextValidateAt, stores lastError.
+ * - On network failure: schedules nextValidateAt and stores lastError; does NOT clear graceUntil
+ *   so previously-earned grace remains usable during outages.
+ */
 export async function validateLicense(
   now = Date.now(),
   opts: { force?: boolean } = {},
