@@ -23,8 +23,18 @@ import {
   ensureInstanceName,
 } from './entitlement/entitlement'
 import { getLicense } from './entitlement/storage'
+import type { NavGPTMessage } from './entitlement/messages'
 
 const ALARM_NAME = 'navgpt_validate'
+const ALARM_PERIOD_MIN = 6 * 60 // every 6 hours
+
+async function ensureAlarmScheduled() {
+  await chrome.alarms.create(ALARM_NAME, {
+    delayInMinutes: 1,
+    periodInMinutes: ALARM_PERIOD_MIN,
+  })
+}
+
 let inFlightValidate: Promise<any> | null = null
 let inFlightActivate: Promise<any> | null = null
 
@@ -35,11 +45,11 @@ async function scheduleAlarmSoon() {
 chrome.runtime.onInstalled.addListener(async () => {
   await ensureTrialStarted(Date.now())
   await ensureInstanceName()
-  await scheduleAlarmSoon()
+  await ensureAlarmScheduled()
 })
 
 chrome.runtime.onStartup.addListener(async () => {
-  await scheduleAlarmSoon()
+  await ensureAlarmScheduled()
 })
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -58,69 +68,81 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   await inFlightValidate
 })
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  ;(async () => {
-    const now = Date.now()
+chrome.runtime.onMessage.addListener(
+  (msg: NavGPTMessage, _sender, sendResponse) => {
+    ;(async () => {
+      try {
+        const now = Date.now()
 
-    switch (msg?.type) {
-      case 'NAVGPT_ENSURE_TRIAL': {
-        await ensureTrialStarted(now)
-        const state = await getEntitlementState(now)
-        sendResponse({ ok: true, state })
-        return
-      }
+        switch (msg?.type) {
+          case 'NAVGPT_ENSURE_TRIAL': {
+            await ensureTrialStarted(now)
+            const state = await getEntitlementState(now)
+            sendResponse({ ok: true, state })
+            return
+          }
 
-      case 'NAVGPT_GET_STATE': {
-        const state = await getEntitlementState(now)
-        sendResponse({ ok: true, state })
-        return
-      }
+          case 'NAVGPT_GET_STATE': {
+            const state = await getEntitlementState(now)
+            sendResponse({ ok: true, state })
+            return
+          }
 
-      case 'NAVGPT_VALIDATE': {
-        console.log('[navgpt] msg', msg.type)
-        const force = !!msg.force
-        if (!inFlightValidate) {
-          inFlightValidate = validateLicense(now, { force }).finally(() => {
-            inFlightValidate = null
-          })
+          case 'NAVGPT_VALIDATE': {
+            const force = !!msg.force
+            if (!inFlightValidate) {
+              inFlightValidate = validateLicense(now, { force }).finally(() => {
+                inFlightValidate = null
+              })
+            }
+            const validate = await inFlightValidate
+            const state = await getEntitlementState(now)
+            sendResponse({ ok: true, validate, state })
+            return
+          }
+
+          case 'NAVGPT_ACTIVATE': {
+            const licenseKey = String((msg as any).licenseKey ?? '').trim()
+            if (!licenseKey) {
+              const state = await getEntitlementState(now)
+              sendResponse({ ok: false, error: 'Missing license key', state })
+              return
+            }
+
+            if (!inFlightActivate) {
+              inFlightActivate = activateLicenseKey(licenseKey, now).finally(
+                () => {
+                  inFlightActivate = null
+                },
+              )
+            }
+
+            const r = await inFlightActivate
+            const state = await getEntitlementState(now)
+
+            sendResponse({
+              ok: r.ok,
+              error: (r as any).error ?? null,
+              state,
+            })
+            return
+          }
+
+          default: {
+            const state = await getEntitlementState(now)
+            sendResponse({ ok: false, error: 'Unknown message type', state })
+            return
+          }
         }
-        const r = await inFlightValidate
-        const state = await getEntitlementState(now)
-        sendResponse({ ok: true, validate: r, state })
-        return
-      }
-
-      case 'NAVGPT_ACTIVATE': {
-        console.log('[navgpt] msg', msg.type)
-
-        const licenseKey = String(msg.licenseKey ?? '').trim()
-        if (!licenseKey) {
-          sendResponse({ ok: false, error: 'Missing license key' })
-          return
-        }
-
-        if (!inFlightActivate) {
-          inFlightActivate = activateLicenseKey(licenseKey, now).finally(() => {
-            inFlightActivate = null
-          })
-        }
-
-        const r = await inFlightActivate
-        const state = await getEntitlementState(now)
-
+      } catch (e: any) {
+        // never hang callers
         sendResponse({
-          ok: r.ok,
-          error: (r as any).error ?? null,
-          state,
+          ok: false,
+          error: String(e?.message ?? e ?? 'Unknown error'),
         })
-        return
       }
+    })()
 
-      default:
-        sendResponse({ ok: false, error: 'Unknown message type' })
-        return
-    }
-  })()
-
-  return true
-})
+    return true
+  },
+)

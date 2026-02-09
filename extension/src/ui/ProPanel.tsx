@@ -2,6 +2,8 @@ import { useEffect, useState } from 'preact/hooks'
 import { Rocket } from './icons/Rocket'
 import { Locked } from './icons/Locked'
 import { Reload } from './icons/Reload'
+import type { EntitlementState } from '../entitlement/types'
+import type { NavGPTResponse } from '../entitlement/messages'
 
 const CHECKOUT_URL = 'https://YOUR-LEMONSQUEEZY-CHECKOUT-LINK'
 
@@ -11,35 +13,48 @@ function maskKey(k?: string) {
   return `${k.slice(0, 4)}…${k.slice(-4)}`
 }
 
-type EntState = any
+async function send(msg: any): Promise<NavGPTResponse> {
+  return (await chrome.runtime.sendMessage(msg)) as NavGPTResponse
+}
 
 export function ProPanel() {
-  const [state, setState] = useState<EntState | null>(null)
+  const [state, setState] = useState<EntitlementState | null>(null)
   const [licenseKey, setLicenseKey] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // force=false => GET_STATE only
+  // force=true  => VALIDATE (network if due/forced)
   async function refresh(force = false) {
-    const r = await chrome.runtime.sendMessage({
-      type: 'NAVGPT_VALIDATE',
-      force,
-    })
-    setState(r.state)
-    // show error if hard-failed
-    if (r.validate?.ok === false && r.validate?.network !== true) {
-      setError(r.validate?.error ?? 'Validation failed')
-    } else {
-      setError(null)
+    if (!force) {
+      const r = await send({ type: 'NAVGPT_GET_STATE' })
+      if (r.state) setState(r.state)
+      // Don't change error on passive refresh; keep whatever user last saw.
+      return
+    }
+
+    setBusy('Checking…')
+    try {
+      const r = await send({ type: 'NAVGPT_VALIDATE', force: true })
+      if (r.state) setState(r.state)
+
+      // show error only if hard-failed (not network)
+      if (r.validate?.ok === false && r.validate?.network !== true) {
+        setError(r.validate?.error ?? 'Validation failed')
+      } else {
+        setError(null)
+      }
+    } finally {
+      setBusy(null)
     }
   }
 
   useEffect(() => {
     ;(async () => {
-      const r = await chrome.runtime.sendMessage({
-        type: 'NAVGPT_ENSURE_TRIAL',
-      })
-      setState(r.state)
-      await refresh(true) // force validate on open
+      // Ensure trial exists, then just load cached state (no validation on open)
+      const r = await send({ type: 'NAVGPT_ENSURE_TRIAL' })
+      if (r.state) setState(r.state)
+      await refresh(false)
     })()
   }, [])
 
@@ -47,12 +62,12 @@ export function ProPanel() {
     setBusy('Activating…')
     setError(null)
     try {
-      const r = await chrome.runtime.sendMessage({
+      const r = await send({
         type: 'NAVGPT_ACTIVATE',
         licenseKey: licenseKey.trim(),
       })
       if (!r.ok) setError(r.error ?? 'Activation failed')
-      setState(r.state)
+      if (r.state) setState(r.state)
     } finally {
       setBusy(null)
     }
@@ -67,8 +82,19 @@ export function ProPanel() {
   const reason = state?.reason ?? ''
   const savedKey = state?.license?.licenseKey as string | undefined
 
+  const lv = state?.license?.lastValidatedAt
+  const nv = state?.license?.nextValidateAt
+  const gu = state?.license?.graceUntil
+
   return (
     <div class='pro-panel'>
+      <div class='pro-panel__debug'>
+        <div>paidStatus: {String(state?.license?.paidStatus ?? '—')}</div>
+        <div>lastValidatedAt: {lv ? new Date(lv).toLocaleString() : '—'}</div>
+        <div>nextValidateAt: {nv ? new Date(nv).toLocaleString() : '—'}</div>
+        <div>graceUntil: {gu ? new Date(gu).toLocaleString() : '—'}</div>
+        <div>lastError: {String(state?.license?.lastError ?? '—')}</div>
+      </div>
       <div class='pro-panel__row'>
         <div class='pro-panel__title'>
           <h4>NavGPT Pro</h4>
@@ -101,11 +127,13 @@ export function ProPanel() {
         <button type='button' class='pro-panel__btn' onClick={onUpgrade}>
           Upgrade to Pro
         </button>
+
         <button
           type='button'
           class='pro-panel__btn pro-panel__btn--iconlabel'
-          onClick={() => refresh(true)}
+          onClick={() => refresh(true)} // explicit validate
           aria-label='Reload status'
+          disabled={!!busy}
         >
           <span>Refresh status</span>
           <Reload />
