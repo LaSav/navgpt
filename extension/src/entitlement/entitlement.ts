@@ -6,7 +6,7 @@ import type {
 } from './types'
 import { ENTITLEMENT } from './config'
 import { getLicense, getTrial, setLicense, setTrial } from './storage'
-import { lsActivate, lsValidate } from './lemonsqueezy'
+import { lsActivate, lsValidate, lsDeactivate } from './lemonsqueezy'
 
 function daysToMs(days: number) {
   return days * 24 * 60 * 60 * 1000
@@ -161,6 +161,45 @@ export async function activateLicenseKey(licenseKey: string, now = Date.now()) {
 
   const v = await validateLicense(now, { force: true })
   if (!v.ok) return { ok: false as const, error: v.error }
+  return { ok: true as const }
+}
+
+export async function deactivateCurrentInstance(now = Date.now()) {
+  const existing = await getLicense()
+
+  const licenseKey = existing.licenseKey?.trim()
+  const instanceId = existing.instanceId?.trim()
+
+  if (!licenseKey || !instanceId) {
+    return { ok: false as const, error: 'Nothing to deactivate' }
+  }
+
+  const r = await lsDeactivate(licenseKey, instanceId)
+
+  if (!r.deactivated) {
+    return { ok: false as const, error: r.error ?? 'Deactivation failed' }
+  }
+
+  // Clear the device binding so the UI goes back to "Activate" state.
+  // Option A: also clear grace and paid status.
+  const next: LicenseState = {
+    ...existing,
+    instanceId: undefined,
+    paidStatus: 'none',
+    graceUntil: undefined,
+    lastError: null,
+    // Make next validation due soon so state refresh is quick
+    nextValidateAt: now,
+    lastValidatedAt: now,
+  }
+
+  // Optional privacy choice:
+  // - keep licenseKey saved so user can re-activate without retyping
+  // - or clear it to require re-entry after deactivation
+  // next.licenseKey = undefined
+
+  await setLicense(next)
+
   return { ok: true as const }
 }
 

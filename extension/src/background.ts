@@ -21,6 +21,7 @@ import {
   validateLicense,
   activateLicenseKey,
   ensureInstanceName,
+  deactivateCurrentInstance,
 } from './entitlement/entitlement'
 import { getLicense } from './entitlement/storage'
 import type { NavGPTMessage } from './entitlement/messages'
@@ -120,6 +121,17 @@ chrome.runtime.onMessage.addListener(
             const r = await inFlightActivate
             const state = await getEntitlementState(now)
 
+            sendResponse({
+              ok: r.ok,
+              error: (r as any).error ?? null,
+              state,
+            })
+            return
+          }
+
+          case 'NAVGPT_DEACTIVATE': {
+            const r = await deactivateCurrentInstance(now)
+            const state = await getEntitlementState(now)
             sendResponse({
               ok: r.ok,
               error: (r as any).error ?? null,

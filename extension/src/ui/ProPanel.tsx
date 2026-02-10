@@ -73,6 +73,18 @@ export function ProPanel() {
     }
   }
 
+  async function onDeactivate() {
+    setBusy('Deactivating…')
+    setError(null)
+    try {
+      const r = await chrome.runtime.sendMessage({ type: 'NAVGPT_DEACTIVATE' })
+      if (!r.ok) setError(r.error ?? 'Deactivation failed')
+      setState(r.state)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   function onUpgrade() {
     window.open(CHECKOUT_URL, '_blank', 'noopener,noreferrer')
   }
@@ -85,6 +97,11 @@ export function ProPanel() {
   const lv = state?.license?.lastValidatedAt
   const nv = state?.license?.nextValidateAt
   const gu = state?.license?.graceUntil
+
+  const isActivated =
+    !!state?.license?.licenseKey &&
+    !!state?.license?.instanceId &&
+    state?.license?.paidStatus === 'active'
 
   return (
     <div class='pro-panel'>
@@ -123,39 +140,69 @@ export function ProPanel() {
         ) : null}
       </div>
 
-      <div class='pro-panel__actions'>
-        <button type='button' class='pro-panel__btn' onClick={onUpgrade}>
-          Upgrade to Pro
-        </button>
+      {isActivated ? (
+        <div class='pro-panel__actions'>
+          <button type='button' class='pro-panel__btn' onClick={onUpgrade}>
+            Manage / Upgrade
+          </button>
+          <button
+            type='button'
+            class='pro-panel__btn pro-panel__btn--danger'
+            onClick={onDeactivate}
+            disabled={!!busy}
+          >
+            Deactivate on this device
+          </button>
+          <button
+            type='button'
+            class='pro-panel__btn pro-panel__btn--iconlabel'
+            onClick={() => refresh(true)} // explicit validate
+            aria-label='Reload status'
+            disabled={!!busy}
+          >
+            <span>Refresh status</span>
+            <Reload />
+          </button>
+        </div>
+      ) : (
+        <>
+          <div class='pro-panel__actions'>
+            <button type='button' class='pro-panel__btn' onClick={onUpgrade}>
+              Upgrade to Pro
+            </button>
 
-        <button
-          type='button'
-          class='pro-panel__btn pro-panel__btn--iconlabel'
-          onClick={() => refresh(true)} // explicit validate
-          aria-label='Reload status'
-          disabled={!!busy}
-        >
-          <span>Refresh status</span>
-          <Reload />
-        </button>
-      </div>
+            <button
+              type='button'
+              class='pro-panel__btn pro-panel__btn--iconlabel'
+              onClick={() => refresh(true)} // explicit validate
+              aria-label='Reload status'
+              disabled={!!busy}
+            >
+              <span>Refresh status</span>
+              <Reload />
+            </button>
+          </div>
 
-      <div class='pro-panel__activate'>
-        <input
-          class='pro-panel__input'
-          value={licenseKey}
-          onInput={(e) => setLicenseKey((e.target as HTMLInputElement).value)}
-          placeholder='Enter License Key'
-        />
-        <button
-          type='button'
-          class='pro-panel__btn pro-panel__btn--full'
-          onClick={onActivate}
-          disabled={!licenseKey.trim() || !!busy}
-        >
-          Activate
-        </button>
-      </div>
+          <div class='pro-panel__activate'>
+            <input
+              class='pro-panel__input'
+              value={licenseKey}
+              onInput={(e) =>
+                setLicenseKey((e.target as HTMLInputElement).value)
+              }
+              placeholder='Enter License Key'
+            />
+            <button
+              type='button'
+              class='pro-panel__btn pro-panel__btn--full'
+              onClick={onActivate}
+              disabled={!licenseKey.trim() || !!busy}
+            >
+              Activate
+            </button>
+          </div>
+        </>
+      )}
 
       {error ? <div class='pro-panel__error'>{error}</div> : null}
     </div>

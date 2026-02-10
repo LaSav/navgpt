@@ -34,6 +34,16 @@ type ValidateResponse = {
   instance?: { id: string; name: string } | null
 }
 
+type DeactivateResponse = {
+  deactivated: boolean
+  error: string | null
+  license_key?: {
+    status: 'inactive' | 'active' | 'expired' | 'disabled'
+    expires_at: string | null
+  }
+  instance?: { id: string; name: string } | null
+}
+
 function formBody(params: Record<string, string>): string {
   const usp = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) usp.set(k, v)
@@ -71,4 +81,19 @@ export async function lsValidate(
     body: formBody(params),
   })
   return (await res.json()) as ValidateResponse
+}
+
+export async function lsDeactivate(
+  licenseKey: string,
+  instanceId: string,
+): Promise<DeactivateResponse> {
+  const res = await fetch(`${LICENSE_API_BASE}/deactivate`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formBody({ license_key: licenseKey, instance_id: instanceId }),
+  })
+  return (await res.json()) as DeactivateResponse
 }

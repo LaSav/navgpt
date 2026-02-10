@@ -5,6 +5,7 @@ export type NavGPTMessage =
   | { type: 'NAVGPT_GET_STATE' }
   | { type: 'NAVGPT_VALIDATE'; force?: boolean }
   | { type: 'NAVGPT_ACTIVATE'; licenseKey: string }
+  | { type: 'NAVGPT_DEACTIVATE' }
 
 export type ValidateResult =
   | { ok: true }
