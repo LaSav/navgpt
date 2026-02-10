@@ -33,8 +33,13 @@ export async function ensureTrialStarted(
 function paidStatusFromLs(status?: string): PaidStatus {
   if (status === 'disabled') return 'disabled'
   if (status === 'expired') return 'expired'
-  if (status === 'active' || status === 'inactive') return 'active'
+  if (status === 'active') return 'active'
   return 'none'
+}
+
+function isInstanceNotFound(err?: string | null): boolean {
+  if (!err) return false
+  return /instance[_\s-]?id not found/i.test(err)
 }
 
 /**
@@ -116,11 +121,20 @@ export async function ensureInstanceName(): Promise<string> {
 export async function activateLicenseKey(licenseKey: string, now = Date.now()) {
   const existing = await getLicense()
 
-  // ✅ If we already activated this key on this install, do NOT activate again.
-  if (existing.licenseKey === licenseKey && existing.instanceId) {
+  // If this key is already saved, validate first.
+  // - If still ACTIVE => we're done.
+  // - If instance is stale or status is not active => re-activate to consume 1 activation and bind instance again.
+  if (existing.licenseKey === licenseKey) {
     const v = await validateLicense(now, { force: true })
-    if (!v.ok) return { ok: false as const, error: v.error }
-    return { ok: true as const }
+
+    const latest = await getLicense()
+    const isActive = latest.paidStatus === 'active'
+
+    if (v.ok && isActive && latest.instanceId) {
+      return { ok: true as const }
+    }
+
+    // Otherwise fall through to activation attempt to establish an active instance.
   }
 
   const instanceName = existing.instanceName ?? (await ensureInstanceName())
@@ -170,7 +184,21 @@ export async function validateLicense(
   if (!opts.force && !due) return { ok: true }
 
   try {
-    const v = await lsValidate(license.licenseKey, license.instanceId)
+    // 1) Validate with instanceId if we have it
+    let v = await lsValidate(license.licenseKey, license.instanceId)
+
+    // 2) If the instance binding is stale, retry without instance_id
+    if (!v.valid && isInstanceNotFound(v.error) && license.instanceId) {
+      v = await lsValidate(license.licenseKey, undefined)
+
+      // Clear stale instanceId so we don't keep failing the same way next time
+      await setLicense({
+        ...license,
+        instanceId: undefined,
+      })
+      // Re-read local copy for subsequent setLicense calls below
+      license.instanceId = undefined
+    }
 
     if (!v.valid) {
       const paidStatus = paidStatusFromLs(v.license_key?.status)
@@ -187,12 +215,17 @@ export async function validateLicense(
 
     const paidStatus = paidStatusFromLs(v.license_key?.status)
 
+    // Only grant offline grace for genuinely entitled (active) subscriptions
+    const shouldGrantGrace = paidStatus === 'active'
+
     await setLicense({
       ...license,
       paidStatus,
       lastValidatedAt: now,
       nextValidateAt: nextValidateAt(now),
-      graceUntil: now + daysToMs(ENTITLEMENT.graceDays),
+      graceUntil: shouldGrantGrace
+        ? now + daysToMs(ENTITLEMENT.graceDays)
+        : undefined,
       lastError: null,
     })
 
