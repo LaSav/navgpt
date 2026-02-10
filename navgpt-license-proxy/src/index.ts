@@ -1,4 +1,4 @@
-type Route = 'activate' | 'validate';
+type Route = 'activate' | 'validate' | 'deactivate';
 
 function corsHeaders(origin: string | null) {
 	// For extensions, Origin may be null. We'll allow all for simplicity.
@@ -53,7 +53,11 @@ async function rateLimit(request: Request, limitPerMinute: number) {
 
 async function forwardToLemon(route: Route, payload: any) {
 	const target =
-		route === 'activate' ? 'https://api.lemonsqueezy.com/v1/licenses/activate' : 'https://api.lemonsqueezy.com/v1/licenses/validate';
+		route === 'activate'
+			? 'https://api.lemonsqueezy.com/v1/licenses/activate'
+			: route === 'deactivate'
+				? 'https://api.lemonsqueezy.com/v1/licenses/deactivate'
+				: 'https://api.lemonsqueezy.com/v1/licenses/validate';
 
 	let body: string;
 
@@ -64,6 +68,13 @@ async function forwardToLemon(route: Route, payload: any) {
 			return { status: 400, body: { error: 'missing_params', message: 'licenseKey and instanceName are required' } };
 		}
 		body = formBody({ license_key, instance_name });
+	} else if (route === 'deactivate') {
+		const license_key = String(payload?.licenseKey ?? payload?.license_key ?? '').trim();
+		const instance_id = String(payload?.instanceId ?? payload?.instance_id ?? '').trim();
+		if (!license_key || !instance_id) {
+			return { status: 400, body: { error: 'missing_params', message: 'licenseKey and instanceId are required' } };
+		}
+		body = formBody({ license_key, instance_id });
 	} else {
 		const license_key = String(payload?.licenseKey ?? payload?.license_key ?? '').trim();
 		const instance_id = String(payload?.instanceId ?? payload?.instance_id ?? '').trim();
@@ -115,7 +126,7 @@ export default {
 		}
 
 		const route = url.pathname.replace('/', '') as Route;
-		if (route !== 'activate' && route !== 'validate') {
+		if (route !== 'activate' && route !== 'validate' && route !== 'deactivate') {
 			return new Response('Not Found', { status: 404, headers: corsHeaders(origin) });
 		}
 
