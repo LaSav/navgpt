@@ -2,6 +2,8 @@ import { useEffect, useState } from 'preact/hooks'
 import { Rocket } from './icons/Rocket'
 import { Locked } from './icons/Locked'
 import { Reload } from './icons/Reload'
+import { EyeOpen } from './icons/EyeOpen'
+import { EyeClosed } from './icons/EyeClosed'
 import type { EntitlementState } from '../entitlement/types'
 import type { NavGPTResponse } from '../entitlement/messages'
 
@@ -22,14 +24,26 @@ export function ProPanel() {
   const [licenseKey, setLicenseKey] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showKey, setShowKey] = useState(false)
 
-  // force=false => GET_STATE only
-  // force=true  => VALIDATE (network if due/forced)
+  const savedKey = state?.license?.licenseKey as string | undefined
+  const isActivated =
+    !!state?.license?.licenseKey &&
+    !!state?.license?.instanceId &&
+    state?.license?.paidStatus === 'active'
+
+  // Repopulate input with stored key when not activated
+  useEffect(() => {
+    if (!isActivated && savedKey) {
+      setLicenseKey(savedKey)
+      setShowKey(false) // reset visibility when state changes
+    }
+  }, [isActivated, savedKey])
+
   async function refresh(force = false) {
     if (!force) {
       const r = await send({ type: 'NAVGPT_GET_STATE' })
       if (r.state) setState(r.state)
-      // Don't change error on passive refresh; keep whatever user last saw.
       return
     }
 
@@ -38,7 +52,6 @@ export function ProPanel() {
       const r = await send({ type: 'NAVGPT_VALIDATE', force: true })
       if (r.state) setState(r.state)
 
-      // show error only if hard-failed (not network)
       if (r.validate?.ok === false && r.validate?.network !== true) {
         setError(r.validate?.error ?? 'Validation failed')
       } else {
@@ -51,7 +64,6 @@ export function ProPanel() {
 
   useEffect(() => {
     ;(async () => {
-      // Ensure trial exists, then just load cached state (no validation on open)
       const r = await send({ type: 'NAVGPT_ENSURE_TRIAL' })
       if (r.state) setState(r.state)
       await refresh(false)
@@ -92,16 +104,9 @@ export function ProPanel() {
   const tier = state?.tier ?? '…'
   const proAllowed = !!state?.proAllowed
   const reason = state?.reason ?? ''
-  const savedKey = state?.license?.licenseKey as string | undefined
-
   const lv = state?.license?.lastValidatedAt
   const nv = state?.license?.nextValidateAt
   const gu = state?.license?.graceUntil
-
-  const isActivated =
-    !!state?.license?.licenseKey &&
-    !!state?.license?.instanceId &&
-    state?.license?.paidStatus === 'active'
 
   return (
     <div class='pro-panel'>
@@ -112,6 +117,7 @@ export function ProPanel() {
         <div>graceUntil: {gu ? new Date(gu).toLocaleString() : '—'}</div>
         <div>lastError: {String(state?.license?.lastError ?? '—')}</div>
       </div>
+
       <div class='pro-panel__row'>
         <div class='pro-panel__title'>
           <h4>NavGPT Pro</h4>
@@ -132,8 +138,21 @@ export function ProPanel() {
             </div>
           )}
         </div>
-        <div class='pro-panel__reason'>{reason}</div>
-        {savedKey ? (
+        <div class='pro-panel__reason-row'>
+          <div class='pro-panel__reason'>{reason}</div>
+
+          <button
+            type='button'
+            class='pro-panel__reason-refresh'
+            onClick={() => refresh(true)}
+            aria-label='Refresh status'
+            disabled={!!busy}
+            title='Refresh status'
+          >
+            <Reload />
+          </button>
+        </div>
+        {isActivated && savedKey ? (
           <div class='pro-panel__key'>
             Key: <code>{maskKey(savedKey)}</code>
           </div>
@@ -153,16 +172,6 @@ export function ProPanel() {
           >
             Deactivate on this device
           </button>
-          <button
-            type='button'
-            class='pro-panel__btn pro-panel__btn--iconlabel'
-            onClick={() => refresh(true)} // explicit validate
-            aria-label='Reload status'
-            disabled={!!busy}
-          >
-            <span>Refresh status</span>
-            <Reload />
-          </button>
         </div>
       ) : (
         <>
@@ -170,28 +179,38 @@ export function ProPanel() {
             <button type='button' class='pro-panel__btn' onClick={onUpgrade}>
               Upgrade to Pro
             </button>
-
-            <button
-              type='button'
-              class='pro-panel__btn pro-panel__btn--iconlabel'
-              onClick={() => refresh(true)} // explicit validate
-              aria-label='Reload status'
-              disabled={!!busy}
-            >
-              <span>Refresh status</span>
-              <Reload />
-            </button>
           </div>
 
           <div class='pro-panel__activate'>
-            <input
-              class='pro-panel__input'
-              value={licenseKey}
-              onInput={(e) =>
-                setLicenseKey((e.target as HTMLInputElement).value)
-              }
-              placeholder='Enter License Key'
-            />
+            {!isActivated && savedKey && (
+              <div class='pro-panel__hint'>
+                A license key is saved on this device.
+              </div>
+            )}
+            <div class='pro-panel__input-wrap'>
+              <input
+                class='pro-panel__input pro-panel__input--withicon'
+                type={showKey ? 'text' : 'password'}
+                value={licenseKey}
+                onInput={(e) =>
+                  setLicenseKey((e.target as HTMLInputElement).value)
+                }
+                placeholder='Enter License Key'
+              />
+
+              {licenseKey && (
+                <button
+                  type='button'
+                  class='pro-panel__input-iconbtn'
+                  onClick={() => setShowKey((v) => !v)}
+                  aria-label={showKey ? 'Hide license key' : 'Show license key'}
+                  aria-pressed={showKey}
+                >
+                  {showKey ? <EyeOpen /> : <EyeClosed />}
+                </button>
+              )}
+            </div>
+
             <button
               type='button'
               class='pro-panel__btn pro-panel__btn--full'
