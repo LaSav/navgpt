@@ -1,5 +1,5 @@
 import { render } from 'preact'
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useRef, useState, useMemo } from 'preact/hooks'
 import Sidebar from './ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
@@ -7,6 +7,8 @@ import { hasProAccess, requireProAccess } from './entitlement/gate'
 import { consumeDailyQuota } from './entitlement/dailyLimit'
 import { shouldShowSidebar } from './dom/page'
 import { SEL } from './dom/selectors'
+
+const FREE_VISIBLE_COUNT = 5
 
 /** Helpers for selector constants that include leading '#' */
 function idFromSelector(sel: string): string {
@@ -288,6 +290,20 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const [isPro, setIsPro] = useState(false)
   const [shouldShow, setShouldShow] = useState(() => shouldShowSidebar())
 
+  const visibleItems = useMemo(() => {
+    if (isPro) return items
+    return items.slice(-FREE_VISIBLE_COUNT)
+  }, [items, isPro])
+
+  // Optional but nice: if activeId is no longer visible (free tier), clear it.
+  useEffect(() => {
+    if (!activeId) return
+    if (isPro) return
+    if (!visibleItems.some((i) => i.id === activeId)) {
+      setActiveId(undefined)
+    }
+  }, [activeId, isPro, visibleItems])
+
   const [toast, setToast] = useState<{
     message: string
     actionLabel?: string
@@ -349,7 +365,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       return
     }
 
-    const item = items.find((i) => i.id === id)
+    const item = visibleItems.find((i) => i.id === id)
     if (!item) return
 
     const article =
@@ -384,7 +400,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
   }
 
   const onCopy = async (id: string) => {
-    const item = items.find((i) => i.id === id)
+    const item = visibleItems.find((i) => i.id === id)
     if (!item) return
 
     const textToCopy = item.rawText || item.text
@@ -424,7 +440,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     // keep local entitlement in sync
     setIsPro(true)
 
-    const item = items.find((i) => i.id === id)
+    const item = visibleItems.find((i) => i.id === id)
     if (!item) return
 
     const article =
@@ -449,20 +465,21 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const onNextVersion = (id: string) => changeVersion(id, 1)
 
   const goToPromptByOffset = (direction: 1 | -1) => {
-    if (!items.length) return
+    if (!visibleItems.length) return
 
     const currentIndex = activeId
-      ? items.findIndex((i) => i.id === activeId)
+      ? visibleItems.findIndex((i) => i.id === activeId)
       : -1
+
     const nextIndex =
       currentIndex === -1
         ? direction === 1
           ? 0
-          : items.length - 1
+          : visibleItems.length - 1
         : currentIndex + direction
 
-    if (nextIndex < 0 || nextIndex >= items.length) return
-    const nextItem = items[nextIndex]
+    if (nextIndex < 0 || nextIndex >= visibleItems.length) return
+    const nextItem = visibleItems[nextIndex]
     if (nextItem) onJump(nextItem.id)
   }
 
@@ -581,7 +598,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
 
   return shouldShow ? (
     <Sidebar
-      items={items}
+      items={visibleItems}
       onJump={onJump}
       activeId={activeId}
       isOpen={isOpen}
@@ -596,6 +613,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       isPro={isPro}
       toast={toast}
       onDismissToast={() => setToast(null)}
+      totalCount={items.length}
     />
   ) : null
 }

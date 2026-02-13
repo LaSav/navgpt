@@ -3,7 +3,6 @@ import type { PromptItem } from '../dom/scrape'
 import { Navgpt } from './icons/Navgpt'
 import { ArrowUp } from './icons/ArrowUp'
 import { ArrowDown } from './icons/ArrowDown'
-import { Code } from './icons/Code'
 import { Tooltip } from './Tooltip'
 import { Edit } from './icons/Edit'
 import { Copy } from './icons/Copy'
@@ -36,6 +35,7 @@ type Props = {
     onAction?: () => void
   } | null
   onDismissToast?: () => void
+  totalCount?: number
 }
 
 type View = 'history' | 'settings'
@@ -56,6 +56,7 @@ export default function Sidebar({
   isPro,
   toast,
   onDismissToast,
+  totalCount,
 }: Props) {
   const panelId = 'prompt-history-sidebar'
   const [view, setView] = useState<View>('history')
@@ -285,6 +286,7 @@ export default function Sidebar({
         {view === 'history' ? (
           <div class='list'>
             <p class='list--title'>Prompts</p>
+
             {items.length === 0 && (
               <div style={{ opacity: 0.7, padding: '.6rem' }}>
                 No prompts found.
@@ -406,6 +408,15 @@ export default function Sidebar({
                 </div>
               )
             })}
+            {!isPro && totalCount != null && totalCount > items.length && (
+              <div className='visibile-items-hint'>
+                Showing last {items.length} prompts of {totalCount}.{' '}
+                <a href='' target='_blank'>
+                  Upgrade
+                </a>{' '}
+                to see all.
+              </div>
+            )}
           </div>
         ) : (
           <div class='settings-view'>
@@ -428,7 +439,16 @@ export default function Sidebar({
           {view === 'history' ? (
             <>
               <span class='footer--meta'>
-                {items.length} prompt{items.length === 1 ? '' : 's'}
+                {isPro || totalCount == null ? (
+                  <>
+                    {items.length} prompt{items.length === 1 ? '' : 's'}
+                  </>
+                ) : (
+                  <>
+                    {items.length} / {totalCount} prompt
+                    {totalCount === 1 ? '' : 's'}
+                  </>
+                )}
               </span>
               <a
                 class='footer--meta'

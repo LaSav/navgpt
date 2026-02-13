@@ -1,7 +1,7 @@
 export const ENTITLEMENT = {
   trialDays: 14,
   graceDays: 30,
-  validateEveryDays: 2,
+  validateEveryDays: 1,
   validateJitterHours: 24,
   courtesyHoursOnExpiry: 0,
 } as const
