@@ -79,7 +79,7 @@ export default function Sidebar({
     }
 
     return { canGoPrevious, canGoNext }
-  }, [hasItems, currentIndex])
+  }, [hasItems, currentIndex, items.length])
 
   const openSettings = () => {
     setView('settings')
@@ -374,23 +374,29 @@ export default function Sidebar({
                       )
                     ) : (
                       <div class='edits-controls'>
-                        <button
-                          type='button'
-                          class='badge__locked-btn badge__btn--iconlabel'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onRequirePro?.(
-                              'Branch detection & navigation are pro features. Upgrade to access.',
-                            )
-                          }}
-                          title='Version history & branching is available on Pro'
-                        >
-                          <Locked /> / <Locked />
-                        </button>
+                        {p.isEditing ? (
+                          <span class='badge badge--editing'>editing</span>
+                        ) : (
+                          <button
+                            type='button'
+                            class='badge__locked-btn badge__btn--iconlabel'
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onRequirePro?.(
+                                'Branch detection & navigation are pro features. Upgrade to access.',
+                              )
+                            }}
+                            title='Version history & branching is available on Pro'
+                          >
+                            <Locked /> / <Locked />
+                          </button>
+                        )}
                       </div>
                     )}
 
-                    {p.isEditing && (
+                    {/* Keep this ONLY if you want "editing" to also appear for Pro users.
+                        If you only want it to replace the locked icons (non-Pro), you can remove this block. */}
+                    {isPro && p.isEditing && (
                       <span class='badge badge--editing'>editing</span>
                     )}
 
@@ -408,6 +414,7 @@ export default function Sidebar({
                 </div>
               )
             })}
+
             {!isPro && totalCount != null && totalCount > items.length && (
               <div className='visibile-items-hint'>
                 Showing last {items.length} prompts of {totalCount}.{' '}
