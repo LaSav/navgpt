@@ -19,7 +19,11 @@ async function send(msg: any): Promise<NavGPTResponse> {
   return (await chrome.runtime.sendMessage(msg)) as NavGPTResponse
 }
 
-export function ProPanel() {
+export function ProPanel({
+  onEntitlementChange,
+}: {
+  onEntitlementChange?: () => void
+}) {
   const [state, setState] = useState<EntitlementState | null>(null)
   const [licenseKey, setLicenseKey] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -59,6 +63,7 @@ export function ProPanel() {
       }
     } finally {
       setBusy(null)
+      onEntitlementChange?.()
     }
   }
 
@@ -82,6 +87,7 @@ export function ProPanel() {
       if (r.state) setState(r.state)
     } finally {
       setBusy(null)
+      onEntitlementChange?.()
     }
   }
 
@@ -94,6 +100,7 @@ export function ProPanel() {
       setState(r.state)
     } finally {
       setBusy(null)
+      onEntitlementChange?.()
     }
   }
 

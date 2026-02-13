@@ -295,6 +295,18 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     return items.slice(-FREE_VISIBLE_COUNT)
   }, [items, isPro])
 
+  const refreshIsPro = async () => {
+    try {
+      setIsPro(await hasProAccess())
+    } catch {
+      setIsPro(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshIsPro()
+  }, [])
+
   // Optional but nice: if activeId is no longer visible (free tier), clear it.
   useEffect(() => {
     if (!activeId) return
@@ -436,9 +448,6 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       )
       return
     }
-
-    // keep local entitlement in sync
-    setIsPro(true)
 
     const item = visibleItems.find((i) => i.id === id)
     if (!item) return
@@ -611,6 +620,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
       onNextVersion={onNextVersion}
       onRequirePro={(message) => showLockedToast(`${message}`, 'Upgrade')}
       isPro={isPro}
+      onEntitlementChange={refreshIsPro}
       toast={toast}
       onDismissToast={() => setToast(null)}
       totalCount={items.length}

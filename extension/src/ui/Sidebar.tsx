@@ -29,6 +29,7 @@ type Props = {
   onPreviousPrompt: () => void
   onRequirePro?: (message: string) => void
   isPro: boolean
+  onEntitlementChange?: () => void
   toast?: {
     message: string
     actionLabel?: string
@@ -54,6 +55,7 @@ export default function Sidebar({
   onPreviousPrompt,
   onRequirePro,
   isPro,
+  onEntitlementChange,
   toast,
   onDismissToast,
   totalCount,
@@ -427,7 +429,7 @@ export default function Sidebar({
           </div>
         ) : (
           <div class='settings-view'>
-            <ProPanel />
+            <ProPanel onEntitlementChange={onEntitlementChange} />
           </div>
         )}
 
