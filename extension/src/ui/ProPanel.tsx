@@ -95,9 +95,9 @@ export function ProPanel({
     setBusy('Deactivating…')
     setError(null)
     try {
-      const r = await chrome.runtime.sendMessage({ type: 'NAVGPT_DEACTIVATE' })
+      const r = await send({ type: 'NAVGPT_DEACTIVATE' })
       if (!r.ok) setError(r.error ?? 'Deactivation failed')
-      setState(r.state)
+      setState(r.state ?? null)
     } finally {
       setBusy(null)
       onEntitlementChange?.()
