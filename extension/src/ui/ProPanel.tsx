@@ -19,6 +19,19 @@ async function send(msg: any): Promise<NavGPTResponse> {
   return (await chrome.runtime.sendMessage(msg)) as NavGPTResponse
 }
 
+function getTrialDaysLeft(state: EntitlementState | null): number | null {
+  if (!state) return null
+  if (state.tier !== 'trial') return null
+  const ends = state.trial?.trialEndsAt
+  if (!ends) return null
+
+  const now = Date.now()
+  const diffMs = ends - now
+  if (diffMs <= 0) return 0
+
+  return Math.ceil(diffMs / (24 * 60 * 60 * 1000))
+}
+
 export function ProPanel({
   onEntitlementChange,
 }: {
@@ -35,6 +48,13 @@ export function ProPanel({
     !!state?.license?.licenseKey &&
     !!state?.license?.instanceId &&
     state?.license?.paidStatus === 'active'
+  const tier = state?.tier ?? '…'
+  const proAllowed = !!state?.proAllowed
+  const reason = state?.reason ?? ''
+  const lv = state?.license?.lastValidatedAt
+  const nv = state?.license?.nextValidateAt
+  const gu = state?.license?.graceUntil
+  const trialDaysLeft = getTrialDaysLeft(state)
 
   // Repopulate input with stored key when not activated
   useEffect(() => {
@@ -108,22 +128,15 @@ export function ProPanel({
     window.open(CHECKOUT_URL, '_blank', 'noopener,noreferrer')
   }
 
-  const tier = state?.tier ?? '…'
-  const proAllowed = !!state?.proAllowed
-  const reason = state?.reason ?? ''
-  const lv = state?.license?.lastValidatedAt
-  const nv = state?.license?.nextValidateAt
-  const gu = state?.license?.graceUntil
-
   return (
     <div class='pro-panel'>
-      <div class='pro-panel__debug'>
+      {/* <div class='pro-panel__debug'>
         <div>paidStatus: {String(state?.license?.paidStatus ?? '—')}</div>
         <div>lastValidatedAt: {lv ? new Date(lv).toLocaleString() : '—'}</div>
         <div>nextValidateAt: {nv ? new Date(nv).toLocaleString() : '—'}</div>
         <div>graceUntil: {gu ? new Date(gu).toLocaleString() : '—'}</div>
         <div>lastError: {String(state?.license?.lastError ?? '—')}</div>
-      </div>
+      </div> */}
 
       <div class='pro-panel__row'>
         <div class='pro-panel__title'>
@@ -162,6 +175,13 @@ export function ProPanel({
         {isActivated && savedKey ? (
           <div class='pro-panel__key'>
             Key: <code>{maskKey(savedKey)}</code>
+          </div>
+        ) : null}
+        {trialDaysLeft !== null ? (
+          <div>
+            {trialDaysLeft > 0
+              ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in your trial`
+              : 'Your trial has ended'}
           </div>
         ) : null}
       </div>
