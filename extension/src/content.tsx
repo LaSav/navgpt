@@ -10,6 +10,15 @@ import { SEL } from './dom/selectors'
 
 const FREE_VISIBLE_COUNT = 5
 
+function isProFromState(state: any): boolean {
+  return (
+    !!state?.proAllowed &&
+    !!state?.license?.licenseKey &&
+    !!state?.license?.instanceId &&
+    state?.license?.paidStatus === 'active'
+  )
+}
+
 /** Helpers for selector constants that include leading '#' */
 function idFromSelector(sel: string): string {
   return sel.replace(/^#/, '')
@@ -307,6 +316,34 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     refreshIsPro()
   }, [])
 
+  // Listen for entitlement changes from the service worker
+  useEffect(() => {
+    const handler = (msg: any) => {
+      if (msg?.type !== 'NAVGPT_ENTITLEMENT_CHANGED') return
+
+      // If state is present, update immediately (no async hop)
+      if (msg.state) {
+        setIsPro(isProFromState(msg.state))
+        return
+      }
+
+      // Fallback if state not included for some reason
+      refreshIsPro()
+    }
+
+    chrome.runtime.onMessage.addListener(handler)
+    return () => chrome.runtime.onMessage.removeListener(handler)
+  }, [])
+
+  // Optional: re-check when the tab becomes visible again
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible') refreshIsPro()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
+
   // Optional but nice: if activeId is no longer visible (free tier), clear it.
   useEffect(() => {
     if (!activeId) return
@@ -589,21 +626,6 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [items])
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const ok = await hasProAccess()
-        if (!cancelled) setIsPro(ok)
-      } catch {
-        if (!cancelled) setIsPro(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   return shouldShow ? (
     <Sidebar
