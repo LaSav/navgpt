@@ -95,6 +95,22 @@ export function ProPanel({
     })()
   }, [])
 
+  useEffect(() => {
+    ;(async () => {
+      const { navgptPendingLicense } = await chrome.storage.local.get(
+        'navgptPendingLicense',
+      )
+      if (
+        typeof navgptPendingLicense === 'string' &&
+        navgptPendingLicense.trim()
+      ) {
+        setLicenseKey(navgptPendingLicense.trim())
+        setShowKey(false)
+        await chrome.storage.local.remove('navgptPendingLicense')
+      }
+    })()
+  }, [])
+
   async function onActivate() {
     setBusy('Activating…')
     setError(null)

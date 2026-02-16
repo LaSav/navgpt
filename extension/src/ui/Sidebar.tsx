@@ -121,6 +121,21 @@ export default function Sidebar({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [view, onNextPrompt, onPreviousPrompt, canGoNext, canGoPrevious])
 
+  useEffect(() => {
+    ;(async () => {
+      const { navgptPendingLicense } = await chrome.storage.local.get(
+        'navgptPendingLicense',
+      )
+      if (
+        typeof navgptPendingLicense === 'string' &&
+        navgptPendingLicense.trim()
+      ) {
+        setView('settings')
+        if (!isOpen) onToggle()
+      }
+    })()
+  }, [])
+
   return (
     <>
       {/* Mini collapsed rail */}
