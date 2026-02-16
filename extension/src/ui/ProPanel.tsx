@@ -7,7 +7,8 @@ import { EyeClosed } from './icons/EyeClosed'
 import type { EntitlementState } from '../entitlement/types'
 import type { NavGPTResponse } from '../entitlement/messages'
 
-const CHECKOUT_URL = 'https://YOUR-LEMONSQUEEZY-CHECKOUT-LINK'
+const CHECKOUT_URL =
+  'https://navgpt.lemonsqueezy.com/checkout/buy/8936bcb2-d8cb-4dd5-9596-1943569a04fe'
 
 function maskKey(k?: string) {
   if (!k) return ''
