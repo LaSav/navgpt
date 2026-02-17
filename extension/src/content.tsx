@@ -4,7 +4,6 @@ import Sidebar from './ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from './dom/scrape'
 import { attachThemeSync } from './dom/themeSync'
 import { hasProAccess, requireProAccess } from './entitlement/gate'
-import { consumeDailyQuota } from './entitlement/dailyLimit'
 import { shouldShowSidebar } from './dom/page'
 import { SEL } from './dom/selectors'
 
@@ -404,26 +403,9 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
     })
   }
 
-  const requireQuotaOrPro = async (): Promise<boolean> => {
-    const pro = await hasProAccess()
-    if (pro) return true
-
-    const q = await consumeDailyQuota(1)
-    if (!q.ok) {
-      showLockedToast(
-        "You've reached the daily limit for this action. Upgrade to Pro to continue using this feature.",
-        'Upgrade',
-      )
-      return false
-    }
-    return true
-  }
-
   const onJump = async (id: string) => {
     const target = items.find((i) => i.id === id)?.el
     if (!target) return
-
-    if (!(await requireQuotaOrPro())) return
 
     snapToPrompt(target)
     setActiveId(id)
@@ -431,15 +413,6 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
   }
 
   const onEdit = async (id: string) => {
-    const gate = await requireProAccess()
-    if (!gate.ok) {
-      showLockedToast(
-        'Editing from the side panel is a pro feature. Upgrade to access.',
-        'Upgrade',
-      )
-      return
-    }
-
     const item = visibleItems.find((i) => i.id === id)
     if (!item) return
 
@@ -480,8 +453,6 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
 
     const textToCopy = item.rawText || item.text
     if (!textToCopy) return
-
-    if (!(await requireQuotaOrPro())) return
 
     try {
       if (navigator.clipboard?.writeText) {
