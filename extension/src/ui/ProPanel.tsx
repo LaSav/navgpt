@@ -52,9 +52,6 @@ export function ProPanel({
   const tier = state?.tier ?? '…'
   const proAllowed = !!state?.proAllowed
   const reason = state?.reason ?? ''
-  const lv = state?.license?.lastValidatedAt
-  const nv = state?.license?.nextValidateAt
-  const gu = state?.license?.graceUntil
   const trialDaysLeft = getTrialDaysLeft(state)
 
   // Repopulate input with stored key when not activated
@@ -147,14 +144,6 @@ export function ProPanel({
 
   return (
     <div class='pro-panel'>
-      {/* <div class='pro-panel__debug'>
-        <div>paidStatus: {String(state?.license?.paidStatus ?? '—')}</div>
-        <div>lastValidatedAt: {lv ? new Date(lv).toLocaleString() : '—'}</div>
-        <div>nextValidateAt: {nv ? new Date(nv).toLocaleString() : '—'}</div>
-        <div>graceUntil: {gu ? new Date(gu).toLocaleString() : '—'}</div>
-        <div>lastError: {String(state?.license?.lastError ?? '—')}</div>
-      </div> */}
-
       <div class='pro-panel__row'>
         <div class='pro-panel__title'>
           <h4>NavGPT Pro</h4>
@@ -205,9 +194,6 @@ export function ProPanel({
 
       {isActivated ? (
         <div class='pro-panel__actions'>
-          <button type='button' class='pro-panel__btn' onClick={onUpgrade}>
-            Manage / Upgrade
-          </button>
           <button
             type='button'
             class='pro-panel__btn pro-panel__btn--danger'
