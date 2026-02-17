@@ -149,6 +149,32 @@ npx wrangler deploy
 | Expired                   | subscription Pro locked                  |
 | Offline during validation | Grace allows temporary access            |
 
+### Enable Performance Debug Logging
+
+Performance logs for `observePrompts()` are disabled by default.
+
+To enable:
+
+1. Open the app in your browser.
+2. Open DevTools → Console.
+3. Run:
+
+```js
+localStorage.setItem('navgpt_debug_perf', '1')
+```
+
+4. Refresh the page
+
+You'll see logs like:
+`[NavGPT perf] { ... }`
+
+To disable:
+`localStorage.removeItem('navgpt_debug_perf')`
+
+or
+
+`localStorage.setItem('navgpt_debug_perf', '0')`
+
 ## 📜 License
 
 Proprietary — NavGPT © 2026
