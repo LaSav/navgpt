@@ -9,6 +9,9 @@ import { SEL } from './dom/selectors'
 
 const FREE_VISIBLE_COUNT = 5
 
+const CHECKOUT_URL =
+  'https://navgpt.lemonsqueezy.com/checkout/buy/8936bcb2-d8cb-4dd5-9596-1943569a04fe'
+
 function readNavgptLicenseFromUrl(): string | null {
   const params = new URLSearchParams(window.location.search)
   const key = params.get('navgpt_license')
@@ -389,7 +392,7 @@ function App({ shadowMount }: { shadowMount: HTMLElement }) {
   )
 
   const openUpgradePage = () => {
-    window.open('https://navgpt.app/', '_blank', 'noopener,noreferrer')
+    window.open(CHECKOUT_URL, '_blank', 'noopener,noreferrer')
   }
 
   const showLockedToast = (message: string, actionLabel: string) => {

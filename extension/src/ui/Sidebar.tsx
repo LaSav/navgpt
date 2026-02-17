@@ -15,6 +15,9 @@ import { Collapse } from './icons/Collapse'
 import { Locked } from './icons/Locked'
 import { Toast } from './Toast'
 
+const CHECKOUT_URL =
+  'https://navgpt.lemonsqueezy.com/checkout/buy/8936bcb2-d8cb-4dd5-9596-1943569a04fe'
+
 type Props = {
   items: PromptItem[]
   onJump: (id: string) => void
@@ -435,7 +438,7 @@ export default function Sidebar({
             {!isPro && totalCount != null && totalCount > items.length && (
               <div className='visibile-items-hint'>
                 Showing last {items.length} prompts of {totalCount}.{' '}
-                <a href='' target='_blank'>
+                <a href={CHECKOUT_URL} target='_blank'>
                   Upgrade
                 </a>{' '}
                 to see all.
