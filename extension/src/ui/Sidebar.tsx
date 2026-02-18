@@ -307,12 +307,6 @@ export default function Sidebar({
           <div class='list'>
             <p class='list--title'>Prompts</p>
 
-            {items.length === 0 && (
-              <div style={{ opacity: 0.7, padding: '.6rem' }}>
-                No prompts found.
-              </div>
-            )}
-
             {items.map((p, idx) => {
               const canPrevVersion = p.currentVersion > 1
               const canNextVersion = p.currentVersion < p.totalVersions
