@@ -477,7 +477,7 @@ export default function Sidebar({
                 target='_blank'
                 rel='noreferrer'
               >
-                Support
+                Feedback & Support
               </a>
             </>
           ) : (
@@ -487,7 +487,7 @@ export default function Sidebar({
               target='_blank'
               rel='noreferrer'
             >
-              Support
+              Feedback & Support
             </a>
           )}
         </div>
