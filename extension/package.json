@@ -8,6 +8,7 @@
     "build:vite": "vite build",
     "build:bg": "esbuild src/background.ts --bundle --format=iife --platform=browser --outfile=dist/assets/background.js",
     "build": "npm run build:vite && npm run build:bg",
+    "build:zip": "npm run build && cd dist && zip -r ../navgpt-extension.zip .",
     "preview": "vite preview"
   },
   "dependencies": {

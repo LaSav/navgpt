@@ -52,6 +52,40 @@ function idFromSelector(sel: string): string {
   return sel.replace(/^#/, '')
 }
 
+// Layout root fix
+function looksLikeAppLayout(el: HTMLElement): boolean {
+  const cs = getComputedStyle(el)
+  if (cs.display !== 'flex') return false
+  if (cs.flexDirection !== 'column') return false
+
+  // full-width-ish containers (allow some rounding / scrollbars)
+  const vw = document.documentElement.clientWidth
+  if (Math.abs(el.getBoundingClientRect().width - vw) > 6) return false
+
+  return true
+}
+
+function containsThreadOrMain(el: HTMLElement): boolean {
+  const main = document.querySelector<HTMLElement>(SEL.main)
+  const thread = document.querySelector<HTMLElement>(SEL.threadRoots)
+  return (!!main && el.contains(main)) || (!!thread && el.contains(thread))
+}
+
+function pickPaddingTargetFrom(root: HTMLElement): HTMLElement {
+  // Prefer a child wrapper that is the real app layout box
+  const children = Array.from(root.children).filter(
+    (c): c is HTMLElement => c instanceof HTMLElement,
+  )
+
+  // First: a child that contains main/thread and matches the layout look
+  const best =
+    children.find((c) => containsThreadOrMain(c) && looksLikeAppLayout(c)) ??
+    children.find((c) => containsThreadOrMain(c)) ??
+    null
+
+  return best ?? root
+}
+
 /**
  * Find a stable container that includes both the header and main content.
  * We pad this element on the right so the page shifts instead of the sidebar overlapping content.
@@ -82,7 +116,7 @@ function findLayoutRoot(): HTMLElement {
   // Lowest common ancestor between header and main
   for (let i = headerChain.length - 1; i >= 0; i--) {
     const candidate = headerChain[i]
-    if (mainSet.has(candidate)) return candidate
+    if (mainSet.has(candidate)) return pickPaddingTargetFrom(candidate)
   }
 
   return document.body
