@@ -47,5 +47,7 @@ export function pageKind(doc: Document = document): PageKind {
 }
 
 export function shouldShowSidebar(doc: Document = document): boolean {
+  const path = location.pathname
+  if (path.includes('/project')) return false
   return pageKind(doc) === 'chat'
 }
