@@ -1,0 +1,248 @@
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import Sidebar from '../ui/Sidebar'
+import { observePrompts, scrapePrompts, type PromptItem } from '../dom/scrape'
+import { requireProAccess } from '../entitlement/gate'
+import { shouldShowSidebar } from '../dom/page'
+import { SEL } from '../dom/selectors'
+import { CHECKOUT_URL, FREE_VISIBLE_COUNT } from './constants'
+import { installNavigationWatcher } from '../dom/navigationWatcher'
+import {
+  getScrollParent,
+  scrollSidebarActiveIntoView,
+  snapToPrompt,
+} from '../dom/scroll'
+import { useEntitlement } from './hooks/useEntitlement'
+import { useLayoutPadding } from './hooks/useLayoutPadding'
+
+type ToastState = {
+  message: string
+  actionLabel?: string
+  onAction?: () => void
+} | null
+
+export function App({ shadowMount }: { shadowMount: HTMLElement }) {
+  const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
+  const [activeId, setActiveId] = useState<string | undefined>(undefined)
+  const [isOpen, setIsOpen] = useState(true)
+  const [shouldShow, setShouldShow] = useState(() => shouldShowSidebar())
+  const [toast, setToast] = useState<ToastState>(null)
+
+  const { isPro, refreshIsPro } = useEntitlement()
+
+  const visibleItems = useMemo(() => {
+    if (isPro) return items
+    return items.slice(-FREE_VISIBLE_COUNT)
+  }, [items, isPro])
+
+  const scrollerRef = useRef<HTMLElement | null>(
+    items[0]?.el ? getScrollParent(items[0].el) : null,
+  )
+
+  useLayoutPadding({ shouldShow, isOpen })
+
+  useEffect(() => {
+    if (!activeId) return
+    if (isPro) return
+    if (!visibleItems.some((i) => i.id === activeId)) {
+      setActiveId(undefined)
+    }
+  }, [activeId, isPro, visibleItems])
+
+  const openUpgradePage = () => {
+    window.open(CHECKOUT_URL, '_blank', 'noopener,noreferrer')
+  }
+
+  const showLockedToast = (message: string, actionLabel: string) => {
+    setToast({
+      message,
+      actionLabel,
+      onAction: () => {
+        setToast(null)
+        openUpgradePage()
+      },
+    })
+  }
+
+  const focusPromptInUi = (id: string, el: HTMLElement) => {
+    snapToPrompt(el)
+    setActiveId(id)
+    scrollSidebarActiveIntoView(shadowMount, id)
+  }
+
+  const onJump = async (id: string) => {
+    const target = items.find((i) => i.id === id)?.el
+    if (!target) return
+
+    focusPromptInUi(id, target)
+  }
+
+  const onEdit = async (id: string) => {
+    const item = visibleItems.find((i) => i.id === id)
+    if (!item) return
+
+    const article =
+      (item.el.closest(SEL.userTurn) as HTMLElement | null) || item.el
+
+    focusPromptInUi(id, article)
+
+    const focusTextarea = () => {
+      const textarea = article.querySelector<HTMLTextAreaElement>(SEL.textarea)
+      if (textarea) {
+        textarea.focus()
+        const len = textarea.value.length
+        textarea.setSelectionRange(len, len)
+      }
+    }
+
+    if (article.querySelector(SEL.textarea)) {
+      focusTextarea()
+      return
+    }
+
+    const editButton =
+      article.querySelector<HTMLButtonElement>(SEL.editMessageButtonExact) ||
+      article.querySelector<HTMLButtonElement>(SEL.editMessageButtonPrefix)
+
+    if (!editButton) return
+
+    editButton.click()
+    requestAnimationFrame(() => requestAnimationFrame(focusTextarea))
+  }
+
+  const onCopy = async (id: string) => {
+    const item = visibleItems.find((i) => i.id === id)
+    if (!item) return
+
+    const textToCopy = item.rawText || item.text
+    if (!textToCopy) return
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy)
+      } else {
+        const ta = document.createElement('textarea')
+        ta.value = textToCopy
+        ta.style.position = 'fixed'
+        ta.style.left = '-9999px'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      }
+    } catch (err) {
+      console.warn('[prompt-sidebar] Failed to copy prompt', err)
+    }
+  }
+
+  const changeVersion = async (id: string, direction: -1 | 1) => {
+    const gate = await requireProAccess()
+    if (!gate.ok) {
+      showLockedToast(
+        'Branch detection & navigation are pro features. Upgrade to access.',
+        'Upgrade',
+      )
+      return
+    }
+
+    const item = visibleItems.find((i) => i.id === id)
+    if (!item) return
+
+    const article =
+      (item.el.closest(SEL.userTurn) as HTMLElement | null) || item.el
+
+    focusPromptInUi(id, article)
+
+    const selector =
+      direction === -1 ? SEL.prevResponseButton : SEL.nextResponseButton
+    const btn = article.querySelector<HTMLButtonElement>(selector)
+    if (!btn) return
+
+    const ariaDisabled = btn.getAttribute('aria-disabled')
+    if (btn.disabled || ariaDisabled === 'true') return
+
+    btn.click()
+  }
+
+  const onPreviousVersion = (id: string) => changeVersion(id, -1)
+  const onNextVersion = (id: string) => changeVersion(id, 1)
+
+  const goToPromptByOffset = (direction: 1 | -1) => {
+    if (!visibleItems.length) return
+
+    const currentIndex = activeId
+      ? visibleItems.findIndex((i) => i.id === activeId)
+      : -1
+
+    const nextIndex =
+      currentIndex === -1
+        ? direction === 1
+          ? 0
+          : visibleItems.length - 1
+        : currentIndex + direction
+
+    if (nextIndex < 0 || nextIndex >= visibleItems.length) return
+    const nextItem = visibleItems[nextIndex]
+    if (nextItem) onJump(nextItem.id)
+  }
+
+  const handleNextPrompt = () => goToPromptByOffset(1)
+  const handlePreviousPrompt = () => goToPromptByOffset(-1)
+  const handleToggle = () => setIsOpen((prev) => !prev)
+
+  useEffect(() => {
+    const uninstall = installNavigationWatcher(() => {
+      setShouldShow(shouldShowSidebar())
+    })
+    return () => uninstall()
+  }, [])
+
+  useEffect(() => {
+    if (!shouldShow) {
+      setItems([])
+      return
+    }
+
+    const stop = observePrompts((next) => {
+      setItems(next)
+      const nextScroller = next[0]?.el
+        ? getScrollParent(next[0].el)
+        : scrollerRef.current
+      scrollerRef.current = nextScroller
+    }, document)
+
+    return () => stop()
+  }, [shouldShow])
+
+  useEffect(() => {
+    const onResize = () => {
+      scrollerRef.current = items[0]?.el
+        ? getScrollParent(items[0].el)
+        : scrollerRef.current
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [items])
+
+  return shouldShow ? (
+    <Sidebar
+      items={visibleItems}
+      onJump={onJump}
+      activeId={activeId}
+      isOpen={isOpen}
+      onToggle={handleToggle}
+      onNextPrompt={handleNextPrompt}
+      onPreviousPrompt={handlePreviousPrompt}
+      onEdit={onEdit}
+      onCopy={onCopy}
+      onPreviousVersion={onPreviousVersion}
+      onNextVersion={onNextVersion}
+      onRequirePro={(message) => showLockedToast(`${message}`, 'Upgrade')}
+      isPro={isPro}
+      onEntitlementChange={refreshIsPro}
+      toast={toast}
+      onDismissToast={() => setToast(null)}
+      totalCount={items.length}
+    />
+  ) : null
+}
