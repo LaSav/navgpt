@@ -26,26 +26,22 @@ export const SEL = {
   turn: 'article[data-turn]',
   userTurn: 'article[data-turn="user"]',
 
-  /** User message bubble (where we read the visible prompt text) */
-  userMessageBubble: [
-    '[data-message-author-role="user"]',
-    '[data-testid="user-message"]',
-    // fallbacks / older or alternate layouts
-    '.user',
-    '.message.user',
-    '[role="article"][data-role="user"]',
-  ].join(','),
+  /**
+   * User message content node inside a user turn.
+   * Keep this narrow. Broad class-based fallbacks like ".user" are too noisy.
+   */
+  userMessageBubble:
+    '[data-testid="user-message"], [data-message-author-role="user"]',
 
   /** Projects index/list view markers inside #thread */
   projectsIndexMarkers: [
-    'li[class*="group/project-item"]',
     '[data-testid="project-conversation-overflow-menu"]',
     '[data-testid="project-conversation-overflow-date"]',
   ].join(','),
 
   /** Editing detection */
   textarea: 'textarea',
-  editableSurface: 'textarea, [contenteditable="true"], form',
+  editableSurface: 'textarea, [contenteditable="true"]',
   focusedEditor: 'textarea:focus, [contenteditable="true"]:focus',
 
   /** Edit button(s) in a user turn */

@@ -1,9 +1,7 @@
-import { SEL } from './selectors'
-
 /**
  * Tight "page visibility" watchers:
  * - react to SPA navigation (pushState/replaceState/popstate)
- * - react when thread roots appear/disappear (lightweight MO, not full subtree churn)
+ * - optionally react to coarse DOM structure changes
  */
 export function installNavigationWatcher(onChange: () => void): () => void {
   const win = window as any
@@ -11,7 +9,15 @@ export function installNavigationWatcher(onChange: () => void): () => void {
   if (win.__navgptNavWatcherInstalled) return () => {}
   win.__navgptNavWatcherInstalled = true
 
-  const notify = () => onChange()
+  let scheduled = false
+  const notify = () => {
+    if (scheduled) return
+    scheduled = true
+    requestAnimationFrame(() => {
+      scheduled = false
+      onChange()
+    })
+  }
 
   const origPush = history.pushState
   const origReplace = history.replaceState
@@ -35,33 +41,21 @@ export function installNavigationWatcher(onChange: () => void): () => void {
   }
 
   const onPop = () => window.dispatchEvent(new Event('navgpt:locationchange'))
+  const onLoc = () => notify()
+
   window.addEventListener('popstate', onPop)
   window.addEventListener('hashchange', onPop)
-
-  const onLoc = () => notify()
   window.addEventListener('navgpt:locationchange', onLoc)
 
-  const mo = new MutationObserver((mutations) => {
-    let changed = false
-    for (const m of mutations) {
-      if (m.type !== 'childList') continue
-      const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]
-      if (
-        nodes.some(
-          (n) =>
-            n instanceof HTMLElement &&
-            (n.matches?.(SEL.threadRoots) ||
-              !!n.querySelector?.(SEL.threadRoots)),
-        )
-      ) {
-        changed = true
-        break
-      }
-    }
-    if (changed) notify()
+  // Optional coarse fallback only. Do not scan mutation records.
+  const mo = new MutationObserver(() => {
+    notify()
   })
 
-  mo.observe(document.documentElement, { childList: true, subtree: true })
+  mo.observe(document.body ?? document.documentElement, {
+    childList: true,
+    subtree: false,
+  })
 
   notify()
 

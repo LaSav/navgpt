@@ -38,6 +38,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const [isOpen, setIsOpen] = useState(true)
   const [shouldShow, setShouldShow] = useState(() => shouldShowSidebar())
   const [toast, setToast] = useState<ToastState>(null)
+  const [pageEpoch, setPageEpoch] = useState(0)
 
   const { isPro, refreshIsPro } = useEntitlement()
 
@@ -272,6 +273,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   useEffect(() => {
     const uninstall = installNavigationWatcher(() => {
       setShouldShow(shouldShowSidebar())
+      setPageEpoch((n) => n + 1)
     })
     return () => uninstall()
   }, [])
@@ -279,6 +281,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   useEffect(() => {
     if (!shouldShow) {
       setItems([])
+      setActiveId(undefined)
       return
     }
 
@@ -291,7 +294,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     }, document)
 
     return () => stop()
-  }, [shouldShow])
+  }, [shouldShow, pageEpoch])
 
   useEffect(() => {
     const onResize = () => {

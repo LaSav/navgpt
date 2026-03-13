@@ -23,8 +23,8 @@ function summarize(text: string, max = 2000): string {
 }
 
 function parseRevisionInfo(article: HTMLElement | null) {
-  let current = 1,
-    total = 1
+  let current = 1
+  let total = 1
 
   if (article) {
     const counter = article.querySelector<HTMLElement>(SEL.revisionCounter)
@@ -35,7 +35,6 @@ function parseRevisionInfo(article: HTMLElement | null) {
       current = parseInt(m[1], 10)
       total = parseInt(m[2], 10)
     } else {
-      // Fallback: if the prev/next controls exist at all, assume there are at least 2 versions.
       const hasPrev = !!article.querySelector(SEL.prevResponseButton)
       const hasNext = !!article.querySelector(SEL.nextResponseButton)
       if (hasPrev || hasNext) total = 2
@@ -58,43 +57,22 @@ function getThreadRoot(): HTMLElement | null {
 }
 
 function getScrapeRoot(passedRoot: ParentNode): ParentNode | null {
-  // If caller passes a custom root, respect it.
   if (passedRoot !== document) return passedRoot
-  // Default behavior: scope to the active thread only.
   return getThreadRoot()
 }
 
-function nodeIsInThread(node: Node): boolean {
-  const thread = getThreadRoot()
-  if (!thread) return false
-
-  if (node === thread) return true
-
-  if (node instanceof HTMLElement) return thread.contains(node)
-
-  const parent = node.parentElement
-  return !!parent && thread.contains(parent)
-}
-
-/**
- * When we don't currently have a thread, we still want to re-run scraping
- * when a thread container appears/disappears.
- */
-function mutationAddsOrRemovesThread(m: MutationRecord): boolean {
-  if (m.type !== 'childList') return false
-
-  const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]
-  return nodes.some((n) => {
-    if (!(n instanceof HTMLElement)) return false
-
-    // Direct match
-    if (n.matches?.(SEL.threadRoots)) return true
-
-    // Nested match
-    if (n.querySelector?.(SEL.threadRoots)) return true
-
-    return false
-  })
+function getUserTurnContentEl(article: HTMLElement): HTMLElement {
+  return (
+    article.querySelector<HTMLElement>(
+      '[data-message-author-role="user"] .whitespace-pre-wrap',
+    ) ??
+    article.querySelector<HTMLElement>(
+      '[data-testid="user-message"] .whitespace-pre-wrap',
+    ) ??
+    article.querySelector<HTMLElement>('[data-message-author-role="user"]') ??
+    article.querySelector<HTMLElement>('[data-testid="user-message"]') ??
+    article
+  )
 }
 
 /**
@@ -106,41 +84,37 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   if (!scrapeRoot) return []
 
   const conversationId = getConversationId() ?? undefined
+  const articles = scrapeRoot.querySelectorAll<HTMLElement>(SEL.userTurn)
+  const items: PromptItem[] = []
 
-  const articles = Array.from(
-    scrapeRoot.querySelectorAll<HTMLElement>(SEL.userTurn),
-  )
-
-  return articles.map((article) => {
-    // Prefer stable turn id when provided by ChatGPT
+  for (const article of Array.from(articles)) {
     const turnId = article.getAttribute('data-turn-id') ?? undefined
-
-    // Keep current ephemeral UI identity behavior intact
-    const id = turnId || (article.dataset.promptId ||= uid('prompt'))
-    if (!article.dataset.promptId) article.dataset.promptId = id
 
     const textarea = article.querySelector<HTMLTextAreaElement>(SEL.textarea)
     const isEditing = !!textarea
 
     let scrollTarget: HTMLElement = article
-    let text = ''
+    let rawText = ''
 
-    if (isEditing) {
-      text = textarea!.value
-      scrollTarget = article
+    if (textarea) {
+      rawText = textarea.value
     } else {
-      const bubble = article.querySelector<HTMLElement>(SEL.userMessageBubble)
-      text = bubble?.textContent || ''
-      if (bubble) scrollTarget = bubble
+      const contentEl = getUserTurnContentEl(article)
+      scrollTarget = contentEl
+      rawText = contentEl.innerText || contentEl.textContent || ''
+    }
+
+    const id = turnId || article.dataset.promptId || uid('prompt')
+    if (!turnId && !article.dataset.promptId) {
+      article.dataset.promptId = id
     }
 
     const { currentVersion, totalVersions, edits } = parseRevisionInfo(article)
-    const short = summarize(text, 360)
 
-    return {
+    items.push({
       id,
-      text: short,
-      rawText: text,
+      text: summarize(rawText, 360),
+      rawText,
       el: scrollTarget,
       edits,
       totalVersions,
@@ -148,90 +122,34 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       isEditing,
       conversationId,
       turnId,
-    }
-  })
-}
-
-function isRelevantMutationBatch(mutations: MutationRecord[]): boolean {
-  return mutations.some(isRelevantMutation)
-}
-
-function isRelevantMutation(m: MutationRecord): boolean {
-  const thread = getThreadRoot()
-
-  // If no thread exists, ONLY react to thread being added/removed.
-  if (!thread) return mutationAddsOrRemovesThread(m)
-
-  // Ignore mutations outside the thread once it exists.
-  if (!nodeIsInThread(m.target)) return false
-
-  if (m.type === 'childList') {
-    const nodes = [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]
-
-    // New/removed user turns (or a subtree containing them)
-    if (
-      nodes.some(
-        (n) =>
-          n instanceof HTMLElement &&
-          (n.matches(SEL.userTurn) || !!n.querySelector?.(SEL.userTurn)),
-      )
-    ) {
-      return true
-    }
-
-    // Editing UI appearing/disappearing inside a user turn
-    const targetEl = m.target as HTMLElement
-    const userArticle = targetEl.closest(SEL.userTurn) as HTMLElement | null
-
-    if (userArticle) {
-      if (
-        nodes.some(
-          (n) =>
-            n instanceof HTMLElement &&
-            (n.matches(SEL.editableSurface) ||
-              !!n.querySelector?.(SEL.editableSurface)),
-        )
-      ) {
-        return true
-      }
-    }
-
-    return false
+    })
   }
 
-  if (m.type === 'attributes') {
-    const el = m.target as HTMLElement
-    if (!el) return false
-
-    const userArticle = el.closest(SEL.userTurn) as HTMLElement | null
-    if (!userArticle) return false
-
-    // Any attribute change on the user article itself could affect layout/state.
-    if (el === userArticle) return true
-
-    // Revision counter or version nav controls changed.
-    if (
-      el.matches(SEL.revisionCounter) ||
-      !!el.closest(SEL.revisionCounter) ||
-      el.matches(SEL.prevResponseButton) ||
-      el.matches(SEL.nextResponseButton)
-    ) {
-      return true
-    }
-
-    return false
-  }
-
-  return false
+  return items
 }
 
 /**
  * Debounce updates while an editor is focused (typing).
+ * Uses the currently bound thread root rather than rediscovering it.
+ *
+ * Hard-pause mutation-driven scrapes while the active element is a prompt editor.
+ * This prevents the sidebar item text from updating live as the user types.
  */
-function isEditorFocused(): boolean {
-  const thread = getThreadRoot()
-  const scope: ParentNode = thread ?? document
-  return !!scope.querySelector(SEL.focusedEditor)
+function isEditorFocusedIn(scope: ParentNode | null): boolean {
+  const active = document.activeElement as HTMLElement | null
+  if (!active) return false
+
+  const container = scope ?? document
+  if (!container.contains(active)) return false
+
+  const isEditable =
+    active.matches('textarea') ||
+    active.matches('[contenteditable="true"]') ||
+    active.matches(SEL.focusedEditor)
+
+  if (!isEditable) return false
+
+  return !!active.closest(SEL.userTurn)
 }
 
 export function observePrompts(
@@ -241,14 +159,9 @@ export function observePrompts(
   const DEBUG_PERF = localStorage.getItem('navgpt_debug_perf') === '1'
 
   type PerfStats = {
-    // mutation side
     moCallbacks: number
     mutationRecords: number
-    relevantBatches: number
-    relevanceMsTotal: number
-    relevanceMsMax: number
 
-    // emit side
     schedules: number
     emits: number
     scrapes: number
@@ -262,9 +175,6 @@ export function observePrompts(
   const stats: PerfStats = {
     moCallbacks: 0,
     mutationRecords: 0,
-    relevantBatches: 0,
-    relevanceMsTotal: 0,
-    relevanceMsMax: 0,
 
     schedules: 0,
     emits: 0,
@@ -281,19 +191,12 @@ export function observePrompts(
   let logTimer: number | null = null
   if (DEBUG_PERF) {
     logTimer = window.setInterval(() => {
-      const avgRel =
-        stats.relevantBatches > 0
-          ? stats.relevanceMsTotal / stats.relevantBatches
-          : 0
       const avgScr = stats.scrapes > 0 ? stats.scrapeMsTotal / stats.scrapes : 0
       const avgSig = stats.emits > 0 ? stats.sigMsTotal / stats.emits : 0
 
       console.log('[NavGPT perf]', {
         moCallbacks: stats.moCallbacks,
         mutationRecords: stats.mutationRecords,
-        relevantBatches: stats.relevantBatches,
-        relevanceAvgMs: fmt(avgRel),
-        relevanceMaxMs: fmt(stats.relevanceMsMax),
 
         schedules: stats.schedules,
         emits: stats.emits,
@@ -306,12 +209,8 @@ export function observePrompts(
         lastItemCount: stats.lastItemCount,
       })
 
-      // reset window stats so each log is “per 2 seconds”
       stats.moCallbacks = 0
       stats.mutationRecords = 0
-      stats.relevantBatches = 0
-      stats.relevanceMsTotal = 0
-      stats.relevanceMsMax = 0
 
       stats.schedules = 0
       stats.emits = 0
@@ -323,21 +222,27 @@ export function observePrompts(
     }, 2000)
   }
 
+  let currentThreadRoot: HTMLElement | null = null
+  let currentObservedTarget: Node | null = null
   let lastSignature: string | null = null
-  let lastThread: HTMLElement | null = null
+
+  let scheduled = false
+  let running = false
+  let needsAnotherPass = false
+  let hydrationTimer: number | null = null
+  let bootstrapTimer: number | null = null
+
+  const HYDRATION_SETTLE_MS = 150
+  const BOOTSTRAP_POLL_MS = 250
+  const BOOTSTRAP_TIMEOUT_MS = 5000
 
   const emit = () => {
     if (DEBUG_PERF) stats.emits++
 
-    // Force refresh when entering/leaving/changing thread
-    const threadNow = getThreadRoot()
-    if (threadNow !== lastThread) {
-      lastThread = threadNow
-      lastSignature = null
-    }
+    const scrapeRoot = root !== document ? root : currentThreadRoot
 
     const s0 = DEBUG_PERF ? performance.now() : 0
-    const items = scrapePrompts(root)
+    const items = scrapeRoot ? scrapePrompts(scrapeRoot) : []
     if (DEBUG_PERF) {
       const dt = performance.now() - s0
       stats.scrapes++
@@ -351,7 +256,7 @@ export function observePrompts(
       .map((i) => {
         const t = i.rawText || i.text || ''
         return [
-          i.id,
+          i.turnId || i.id,
           i.edits,
           i.currentVersion,
           i.totalVersions,
@@ -374,41 +279,40 @@ export function observePrompts(
     onUpdate(items)
   }
 
-  const settle = (fn: () => void) => requestAnimationFrame(fn)
-
-  let scheduled = false
-  let typingDebounce: number | null = null
-  const TYPING_DEBOUNCE_MS = 250
-
-  const schedule = () => {
-    if (DEBUG_PERF) stats.schedules++
-    if (isEditorFocused()) {
-      if (typingDebounce) window.clearTimeout(typingDebounce)
-      typingDebounce = window.setTimeout(() => {
-        typingDebounce = null
-        settle(emit)
-      }, TYPING_DEBOUNCE_MS)
+  const runEmit = () => {
+    if (running) {
+      needsAnotherPass = true
       return
     }
 
-    if (scheduled) return
-    scheduled = true
-    settle(() => {
-      scheduled = false
+    running = true
+    try {
       emit()
-    })
+    } finally {
+      running = false
+      if (needsAnotherPass) {
+        needsAnotherPass = false
+        schedule()
+      }
+    }
   }
 
-  /**
-   * Observing the whole document is noisy on ChatGPT. We prefer observing the active thread.
-   * But we still need to notice when the thread appears/disappears or changes.
-   *
-   * Strategy:
-   * - Primary observer targets the active thread when available, else document.body.
-   * - Secondary observer watches the document for thread root add/remove and retargets primary.
-   */
-  let primaryTarget: Node =
-    getThreadRoot() ?? document.body ?? document.documentElement
+  const schedule = () => {
+    if (DEBUG_PERF) stats.schedules++
+
+    const focusScope: ParentNode | null =
+      root !== document ? root : currentThreadRoot
+
+    // While editing, do not rescrape at all. We'll refresh on focus-out.
+    if (isEditorFocusedIn(focusScope)) return
+
+    if (scheduled) return
+    scheduled = true
+    requestAnimationFrame(() => {
+      scheduled = false
+      runEmit()
+    })
+  }
 
   const primaryObserver = new MutationObserver((mutations) => {
     if (DEBUG_PERF) {
@@ -416,57 +320,107 @@ export function observePrompts(
       stats.mutationRecords += mutations.length
     }
 
-    const t0 = DEBUG_PERF ? performance.now() : 0
-    const relevant = isRelevantMutationBatch(mutations)
-    if (DEBUG_PERF) {
-      const dt = performance.now() - t0
-      if (relevant) {
-        stats.relevantBatches++
-        stats.relevanceMsTotal += dt
-        stats.relevanceMsMax = Math.max(stats.relevanceMsMax, dt)
-      }
-    }
-
-    if (relevant) schedule()
-  })
-
-  const observePrimary = (target: Node) => {
-    primaryObserver.disconnect()
-    primaryTarget = target
-    primaryObserver.observe(primaryTarget, {
-      childList: true,
-      subtree: true,
-      attributes: false,
-      // attributeFilter: [...MUTATION_ATTR_FILTER],
-      // characterData: false,
-    })
-  }
-
-  observePrimary(primaryTarget)
-
-  const threadWatcher = new MutationObserver((mutations) => {
-    // Only care about thread roots being added/removed.
-    const threadChanged = mutations.some(mutationAddsOrRemovesThread)
-    if (!threadChanged) return
-
-    const nextTarget =
-      getThreadRoot() ?? document.body ?? document.documentElement
-    if (nextTarget !== primaryTarget) observePrimary(nextTarget)
-
+    // Treat mutations as a dirty signal only.
     schedule()
   })
 
-  threadWatcher.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  })
+  const observePrimary = (target: Node) => {
+    if (target === currentObservedTarget) return
+    primaryObserver.disconnect()
+    currentObservedTarget = target
+    primaryObserver.observe(target, {
+      childList: true,
+      subtree: true,
+      attributes: false,
+    })
+  }
 
-  settle(emit)
+  const rebindThreadRoot = () => {
+    const nextThread = root !== document ? null : getThreadRoot()
+
+    if (nextThread === currentThreadRoot && currentObservedTarget) return false
+
+    currentThreadRoot = nextThread
+    lastSignature = null
+
+    const target =
+      (root !== document ? root : currentThreadRoot) ??
+      document.body ??
+      document.documentElement
+
+    observePrimary(target)
+    return true
+  }
+
+  const stopBootstrapPolling = () => {
+    if (bootstrapTimer) {
+      window.clearInterval(bootstrapTimer)
+      bootstrapTimer = null
+    }
+  }
+
+  const startBootstrapPolling = () => {
+    if (root !== document) return
+    if (bootstrapTimer) return
+
+    const startedAt = Date.now()
+
+    bootstrapTimer = window.setInterval(() => {
+      const prevThread = currentThreadRoot
+      const changed = rebindThreadRoot()
+
+      if (changed || currentThreadRoot !== prevThread) {
+        schedule()
+      }
+
+      const timedOut = Date.now() - startedAt >= BOOTSTRAP_TIMEOUT_MS
+      if (currentThreadRoot || timedOut) {
+        stopBootstrapPolling()
+      }
+    }, BOOTSTRAP_POLL_MS)
+  }
+
+  const onFocusOut = (e: FocusEvent) => {
+    const target = e.target as HTMLElement | null
+    if (!target) return
+
+    const isEditor =
+      target.matches('textarea') ||
+      target.matches('[contenteditable="true"]') ||
+      target.matches(SEL.focusedEditor)
+
+    if (!isEditor) return
+    if (!target.closest(SEL.userTurn)) return
+
+    requestAnimationFrame(() => requestAnimationFrame(() => schedule()))
+  }
+
+  const settleAfterStructureChange = () => {
+    if (hydrationTimer) window.clearTimeout(hydrationTimer)
+    hydrationTimer = window.setTimeout(() => {
+      hydrationTimer = null
+
+      const prevThread = currentThreadRoot
+      const changed = rebindThreadRoot()
+
+      if (!currentThreadRoot || changed || currentThreadRoot !== prevThread) {
+        startBootstrapPolling()
+      }
+
+      schedule()
+    }, HYDRATION_SETTLE_MS)
+  }
+
+  rebindThreadRoot()
+  settleAfterStructureChange()
+  startBootstrapPolling()
+  document.addEventListener('focusout', onFocusOut, true)
 
   return () => {
-    if (typingDebounce) window.clearTimeout(typingDebounce)
+    if (hydrationTimer) window.clearTimeout(hydrationTimer)
+    stopBootstrapPolling()
+    document.removeEventListener('focusout', onFocusOut, true)
     primaryObserver.disconnect()
-    threadWatcher.disconnect()
     if (logTimer) window.clearInterval(logTimer)
   }
 }

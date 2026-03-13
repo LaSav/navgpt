@@ -24,15 +24,22 @@ export function getThreadLikeRoot(
 /**
  * Active chat thread = a thread root that contains turns.
  * (New chat / landing pages may have a thread root with no turns yet.)
+ *
+ * Keep this off hot paths. It may scan a few candidate roots.
  */
 export function getActiveThread(doc: Document = document): HTMLElement | null {
   const candidates = getThreadCandidates(doc)
   if (!candidates.length) return null
 
-  const withTurns = candidates.filter((el) => el.querySelector(SEL.turn))
-  if (!withTurns.length) return null
+  let firstWithTurns: HTMLElement | null = null
 
-  return withTurns.find((el) => el.querySelector(SEL.userTurn)) ?? withTurns[0]
+  for (const el of candidates) {
+    if (!el.querySelector(SEL.turn)) continue
+    if (!firstWithTurns) firstWithTurns = el
+    if (el.querySelector(SEL.userTurn)) return el
+  }
+
+  return firstWithTurns
 }
 
 export function pageKind(doc: Document = document): PageKind {
