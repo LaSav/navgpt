@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import Sidebar from '../ui/Sidebar'
 import { observePrompts, scrapePrompts, type PromptItem } from '../dom/scrape'
 import { requireProAccess } from '../entitlement/gate'
@@ -13,6 +13,13 @@ import {
 } from '../dom/scroll'
 import { useEntitlement } from './hooks/useEntitlement'
 import { useLayoutPadding } from './hooks/useLayoutPadding'
+import {
+  PROMPT_META_STORAGE_KEY,
+  type PersistedState,
+  getPromptMeta,
+  loadState,
+  togglePinned,
+} from '../storage/promptMeta'
 
 type ToastState = {
   message: string
@@ -20,8 +27,13 @@ type ToastState = {
   onAction?: () => void
 } | null
 
+type SidebarPromptItem = PromptItem & {
+  pinned: boolean
+}
+
 export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
+  const [metaState, setMetaState] = useState<PersistedState>()
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [isOpen, setIsOpen] = useState(true)
   const [shouldShow, setShouldShow] = useState(() => shouldShowSidebar())
@@ -29,16 +41,66 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
 
   const { isPro, refreshIsPro } = useEntitlement()
 
-  const visibleItems = useMemo(() => {
-    if (isPro) return items
-    return items.slice(-FREE_VISIBLE_COUNT)
-  }, [items, isPro])
+  const visibleItems = useMemo<SidebarPromptItem[]>(() => {
+    const merged = items.map((item) => {
+      const meta = getPromptMeta(metaState, item.conversationId, item.turnId)
+
+      return {
+        ...item,
+        pinned: !!meta?.pinned,
+      }
+    })
+
+    if (isPro) return merged
+    return merged.slice(-FREE_VISIBLE_COUNT)
+  }, [items, isPro, metaState])
 
   const scrollerRef = useRef<HTMLElement | null>(
     items[0]?.el ? getScrollParent(items[0].el) : null,
   )
 
   useLayoutPadding({ shouldShow, isOpen })
+
+  useEffect(() => {
+    let cancelled = false
+
+    const init = async () => {
+      const state = await loadState()
+      if (!cancelled) {
+        setMetaState(state)
+      }
+    }
+
+    void init()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleStorageChanged = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string,
+    ) => {
+      if (areaName !== 'local') return
+
+      const change = changes[PROMPT_META_STORAGE_KEY]
+      if (!change) return
+
+      setMetaState(
+        (change.newValue as PersistedState | undefined) ?? {
+          conversations: {},
+        },
+      )
+    }
+
+    chrome.storage.onChanged.addListener(handleStorageChanged)
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChanged)
+    }
+  }, [])
 
   useEffect(() => {
     if (!activeId) return
@@ -134,6 +196,23 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
       console.warn('[prompt-sidebar] Failed to copy prompt', err)
     }
   }
+
+  const onTogglePin = useCallback(
+    async (id: string) => {
+      const item = items.find((i) => i.id === id)
+      if (!item) return
+
+      if (!item.conversationId || !item.turnId) return
+
+      try {
+        const next = await togglePinned(item.conversationId, item.turnId)
+        setMetaState(next)
+      } catch (err) {
+        console.warn('[prompt-sidebar] Failed to toggle pinned state', err)
+      }
+    },
+    [items],
+  )
 
   const changeVersion = async (id: string, direction: -1 | 1) => {
     const gate = await requireProAccess()
@@ -235,6 +314,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
       onPreviousPrompt={handlePreviousPrompt}
       onEdit={onEdit}
       onCopy={onCopy}
+      onTogglePin={onTogglePin}
       onPreviousVersion={onPreviousVersion}
       onNextVersion={onNextVersion}
       onRequirePro={(message) => showLockedToast(`${message}`, 'Upgrade')}

@@ -18,11 +18,16 @@ import { Toast } from './Toast'
 const CHECKOUT_URL =
   'https://navgpt.lemonsqueezy.com/checkout/buy/8936bcb2-d8cb-4dd5-9596-1943569a04fe'
 
+type SidebarPromptItem = PromptItem & {
+  pinned: boolean
+}
+
 type Props = {
-  items: PromptItem[]
+  items: SidebarPromptItem[]
   onJump: (id: string) => void
   onEdit: (id: string) => void
   onCopy: (id: string) => void
+  onTogglePin: (id: string) => void
   onPreviousVersion: (id: string) => void
   onNextVersion: (id: string) => void
   activeId?: string
@@ -49,6 +54,7 @@ export default function Sidebar({
   onJump,
   onEdit,
   onCopy,
+  onTogglePin,
   onPreviousVersion,
   onNextVersion,
   activeId,
@@ -310,12 +316,15 @@ export default function Sidebar({
             {items.map((p, idx) => {
               const canPrevVersion = p.currentVersion > 1
               const canNextVersion = p.currentVersion < p.totalVersions
+              const canPin = !!p.conversationId && !!p.turnId
 
               return (
                 <div
                   key={p.id}
                   data-prompt-id={p.id}
-                  class={`item ${activeId === p.id ? 'item--active' : ''}`}
+                  class={`item ${activeId === p.id ? 'item--active' : ''} ${
+                    p.pinned ? 'item--pinned' : ''
+                  }`}
                   role='button'
                   tabIndex={0}
                   onClick={() => onJump(p.id)}
@@ -331,7 +340,18 @@ export default function Sidebar({
                   </div>
 
                   <div class='text-row'>
-                    <div class='text'>{p.text}</div>
+                    <div class='text'>
+                      {p.pinned && (
+                        <span
+                          class='pin-indicator'
+                          aria-label='Pinned prompt'
+                          title='Pinned prompt'
+                        >
+                          📌
+                        </span>
+                      )}
+                      {p.text}
+                    </div>
                   </div>
 
                   <div class='item-footer'>
@@ -342,11 +362,34 @@ export default function Sidebar({
                         e.stopPropagation()
                         onCopy(p.id)
                       }}
+                      title='Copy prompt'
+                      aria-label='Copy prompt'
                     >
                       <Copy size={12} />
                     </button>
 
-                    {/* Branch / version control */}
+                    <button
+                      type='button'
+                      class={`badge__button ${p.pinned ? 'badge__button--active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (!canPin) return
+                        onTogglePin(p.id)
+                      }}
+                      disabled={!canPin}
+                      aria-pressed={p.pinned}
+                      aria-label={p.pinned ? 'Unpin prompt' : 'Pin prompt'}
+                      title={
+                        !canPin
+                          ? 'Pin unavailable for this prompt'
+                          : p.pinned
+                            ? 'Unpin prompt'
+                            : 'Pin prompt'
+                      }
+                    >
+                      {p.pinned ? '📌' : '📍'}
+                    </button>
+
                     {isPro ? (
                       p.edits > 0 && (
                         <div class='edits-controls'>
@@ -407,9 +450,6 @@ export default function Sidebar({
                         )}
                       </div>
                     )}
-
-                    {/* Keep this ONLY if you want "editing" to also appear for Pro users.
-                        If you only want it to replace the locked icons (non-Pro), you can remove this block. */}
                     {isPro && p.isEditing && (
                       <span class='badge badge--editing'>editing</span>
                     )}
@@ -421,6 +461,8 @@ export default function Sidebar({
                         e.stopPropagation()
                         onEdit(p.id)
                       }}
+                      title='Edit prompt'
+                      aria-label='Edit prompt'
                     >
                       <Edit size={12} />
                     </button>

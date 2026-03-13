@@ -1,7 +1,7 @@
-// src/dom/scrape.ts
 import { uid } from '../util/id'
-import { SEL, MUTATION_ATTR_FILTER } from './selectors'
+import { SEL } from './selectors'
 import { getActiveThread } from './page'
+import { getConversationId } from './getConversationId'
 
 export type PromptItem = {
   id: string
@@ -12,6 +12,9 @@ export type PromptItem = {
   totalVersions: number
   currentVersion: number
   isEditing: boolean
+
+  conversationId?: string
+  turnId?: string
 }
 
 function summarize(text: string, max = 2000): string {
@@ -102,13 +105,17 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   const scrapeRoot = getScrapeRoot(root)
   if (!scrapeRoot) return []
 
+  const conversationId = getConversationId() ?? undefined
+
   const articles = Array.from(
     scrapeRoot.querySelectorAll<HTMLElement>(SEL.userTurn),
   )
 
   return articles.map((article) => {
     // Prefer stable turn id when provided by ChatGPT
-    const turnId = article.getAttribute('data-turn-id') || ''
+    const turnId = article.getAttribute('data-turn-id') ?? undefined
+
+    // Keep current ephemeral UI identity behavior intact
     const id = turnId || (article.dataset.promptId ||= uid('prompt'))
     if (!article.dataset.promptId) article.dataset.promptId = id
 
@@ -139,6 +146,8 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       totalVersions,
       currentVersion,
       isEditing,
+      conversationId,
+      turnId,
     }
   })
 }
