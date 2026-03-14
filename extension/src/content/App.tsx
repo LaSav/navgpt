@@ -286,7 +286,27 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     }
 
     const stop = observePrompts((next) => {
-      setItems(next)
+      setItems((prev) => {
+        const prevById = new Map(prev.map((item) => [item.id, item]))
+
+        return next.map((item) => {
+          const prevItem = prevById.get(item.id)
+          const isTransientEmpty =
+            (!item.rawText || !item.rawText.trim()) &&
+            (!item.text || !item.text.trim())
+
+          if (isTransientEmpty && prevItem) {
+            return {
+              ...item,
+              rawText: prevItem.rawText,
+              text: prevItem.text,
+            }
+          }
+
+          return item
+        })
+      })
+
       const nextScroller = next[0]?.el
         ? getScrollParent(next[0].el)
         : scrollerRef.current

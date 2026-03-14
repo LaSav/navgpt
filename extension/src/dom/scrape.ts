@@ -64,15 +64,28 @@ function getScrapeRoot(passedRoot: ParentNode): ParentNode | null {
 function getUserTurnContentEl(article: HTMLElement): HTMLElement {
   return (
     article.querySelector<HTMLElement>(
-      '[data-message-author-role="user"] .whitespace-pre-wrap',
+      '[data-testid="user-message"] [class*="whitespace-pre-wrap"]',
     ) ??
     article.querySelector<HTMLElement>(
-      '[data-testid="user-message"] .whitespace-pre-wrap',
+      '[data-message-author-role="user"] [class*="whitespace-pre-wrap"]',
     ) ??
-    article.querySelector<HTMLElement>('[data-message-author-role="user"]') ??
+    article.querySelector<HTMLElement>(
+      '[data-testid="user-message"] .markdown',
+    ) ??
+    article.querySelector<HTMLElement>(
+      '[data-message-author-role="user"] .markdown',
+    ) ??
     article.querySelector<HTMLElement>('[data-testid="user-message"]') ??
+    article.querySelector<HTMLElement>('[data-message-author-role="user"]') ??
     article
   )
+}
+
+function normalizeUserTurnText(text: string): string {
+  return text
+    .replace(/^\s*You said:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**
@@ -97,11 +110,13 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
     let rawText = ''
 
     if (textarea) {
-      rawText = textarea.value
+      rawText = normalizeUserTurnText(textarea.value)
     } else {
       const contentEl = getUserTurnContentEl(article)
       scrollTarget = contentEl
-      rawText = contentEl.innerText || contentEl.textContent || ''
+      rawText = normalizeUserTurnText(
+        contentEl.innerText || contentEl.textContent || '',
+      )
     }
 
     const id = turnId || article.dataset.promptId || uid('prompt')
