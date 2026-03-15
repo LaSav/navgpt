@@ -13,6 +13,8 @@ import { Settings } from './icons/Settings'
 import { Back } from './icons/Back'
 import { Collapse } from './icons/Collapse'
 import { Locked } from './icons/Locked'
+import { Bookmark } from './icons/Bookmark'
+import { BookmarkFilled } from './icons/BookmarkFilled'
 import { Toast } from './Toast'
 
 const CHECKOUT_URL =
@@ -337,37 +339,6 @@ export default function Sidebar({
                 >
                   <div class='item-meta'>
                     <span class='meta--index'>{idx + 1}</span>
-                  </div>
-
-                  <div class='text-row'>
-                    <div class='text'>
-                      {p.pinned && (
-                        <span
-                          class='pin-indicator'
-                          aria-label='Pinned prompt'
-                          title='Pinned prompt'
-                        >
-                          📌
-                        </span>
-                      )}
-                      {p.text}
-                    </div>
-                  </div>
-
-                  <div class='item-footer'>
-                    <button
-                      type='button'
-                      class='badge__button'
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onCopy(p.id)
-                      }}
-                      title='Copy prompt'
-                      aria-label='Copy prompt'
-                    >
-                      <Copy size={12} />
-                    </button>
-
                     <button
                       type='button'
                       class={`badge__button ${p.pinned ? 'badge__button--active' : ''}`}
@@ -387,7 +358,30 @@ export default function Sidebar({
                             : 'Pin prompt'
                       }
                     >
-                      {p.pinned ? '📌' : '📍'}
+                      {p.pinned ? (
+                        <BookmarkFilled size={15} />
+                      ) : (
+                        <Bookmark size={15} />
+                      )}
+                    </button>
+                  </div>
+
+                  <div class='text-row'>
+                    <div class='text'>{p.text}</div>
+                  </div>
+
+                  <div class='item-footer'>
+                    <button
+                      type='button'
+                      class='badge__button'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onCopy(p.id)
+                      }}
+                      title='Copy prompt'
+                      aria-label='Copy prompt'
+                    >
+                      <Copy size={12} />
                     </button>
 
                     {isPro ? (
