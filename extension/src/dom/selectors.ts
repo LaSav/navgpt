@@ -23,8 +23,8 @@ export const SEL = {
     '#thread, [data-testid="thread"], [data-testid="conversation-thread"]',
 
   /** Chat turns */
-  turn: 'article[data-turn]',
-  userTurn: 'article[data-turn="user"]',
+  turn: 'article[data-turn], section[data-turn]',
+  userTurn: 'article[data-turn="user"], section[data-turn="user"]',
 
   /**
    * User message content node inside a user turn.
