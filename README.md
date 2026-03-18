@@ -1,135 +1,125 @@
-# NavGPT — Smart Sidebar for ChatGPT
+# NavGPT
 
-NavGPT is a Chrome extension that adds a powerful side panel to ChatGPT, allowing you to:
+NavGPT is a Chrome extension for ChatGPT that adds a dedicated sidebar for navigating prompts within a conversation, jumping between turns, revisiting edited versions, and managing prompt history more efficiently.
 
-- Instantly jump between prompts in long conversations
-- Copy or edit previous prompts
-- Navigate alternative response branches
-- Manage your NavGPT Pro license
+Built with:
 
-Built with **Manifest V3**, **Preact**, and **Vite**.
+- **Preact**
+- **Vite**
+- **Chrome Extension Manifest V3**
 
----
+## Features
 
-## 🧱 Project Structure
+- Prompt history sidebar for the current conversation
+- Fast navigation between prompts
+- Jump directly to a prompt in the thread
+- Copy prompt text
+- Re-open prompts for editing
+- Pin prompts per conversation
+- Prompt version / branch navigation for Pro users
+- Lightweight Pro entitlement flow
 
-extension/ # Chrome extension
-src/
-content.tsx # Injected UI + sidebar logic
-background.ts # Service worker (licensing, alarms, messaging)
-dom/ # ChatGPT DOM scraping + observers
-ui/ # Sidebar + ProPanel components
-entitlement/ # Licensing & trial logic
-util/ # Small helpers
+## Why NavGPT exists
 
-navgpt-license-proxy/ # Cloudflare Worker
-src/index.ts # Secure proxy for Lemon Squeezy license API
+Long ChatGPT conversations become difficult to navigate, especially when prompts are edited, branched, or buried deep in a thread.
 
----
+NavGPT improves that workflow by adding a prompt-focused navigation layer directly into the ChatGPT UI.
 
-## ✨ Features
+## How it works
 
-### Sidebar Navigation
+NavGPT injects a sidebar into ChatGPT pages and builds a structured list of user prompts by scraping the active conversation thread.
 
-- Lists all user prompts in the current ChatGPT thread
-- Jump, copy, or edit prompts instantly
-- Keyboard-style navigation through prompts
+From that sidebar, users can:
 
-### Pro Features
+- browse prompt history
+- jump to prompts
+- edit existing prompts
+- copy prompt text
+- pin prompts
+- navigate versions where available
 
-- Edit prompts directly from sidebar
-- Navigate response branches
-- Increased daily action limits
+Because ChatGPT does not expose a stable public API for this kind of integration, NavGPT uses a defensive DOM-driven approach.
 
----
+## Repository structure
 
-## 🔐 Licensing Model
+```text
+.
+├── extension
+│   ├── public
+│   │   ├── assets/styles.css
+│   │   ├── icons/
+│   │   └── manifest.json
+│   ├── src
+│   │   ├── background.ts
+│   │   ├── content.tsx
+│   │   ├── content/
+│   │   ├── dom/
+│   │   ├── entitlement/
+│   │   ├── storage/
+│   │   ├── ui/
+│   │   └── util/
+│   └── vite.config.ts
+├── navgpt-license-proxy
+│   └── src/index.ts
+└── README.md
+```
 
-NavGPT Pro uses **device-based license activation** via Lemon Squeezy.
+## Project overview
 
-### How It Works
+### Extension content app
 
-| State                  | Meaning                                                   |
-| ---------------------- | --------------------------------------------------------- |
-| **Trial**              | Free trial period after install                           |
-| **Pro (Active)**       | License activated on this device                          |
-| **Inactive**           | Valid key, but not activated anywhere (no Pro access)     |
-| **Grace**              | Temporary offline allowance after a successful validation |
-| **Expired / Disabled** | Subscription inactive or revoked                          |
+The content script mounts a shadow-DOM sidebar into ChatGPT and renders the Preact application.
 
-### Activation
+### DOM integration
 
-When a user enters a license key and presses **Activate**:
+The extension identifies the active thread, scrapes user prompts, detects edit/version controls, and keeps the sidebar in sync with ChatGPT’s single-page-app navigation.
 
-1. The extension requests activation via a secure proxy
-2. Lemon Squeezy assigns an **instance ID** (counts toward activation limit)
-3. The extension validates the license
-4. Pro features unlock
+### Background worker
 
-### Deactivation
+An MV3 service worker manages entitlement state, trial bootstrapping, and recurring license validation.
 
-Users can deactivate this device:
+### License proxy
 
-- The extension calls Lemon’s `/deactivate` endpoint
-- The device activation is released
-- Pro access is removed
-- Activation UI reappears
+A small Cloudflare Worker proxies Lemon Squeezy license requests.
 
----
+## Installation
 
-## 🔄 License Validation
+### Requirements
 
-Validation runs in two ways:
+- Node.js
 
-### Automatic (Background)
+- npm
 
-- The service worker wakes periodically
-- If validation is due, it checks with the licensing server
-- Maintains grace period for temporary outages
+- Chrome or another Chromium-based browser
 
-### Manual (User)
+### Install dependencies
 
-- Users can press **Refresh Status**
-- Forces a real-time validation
-
----
-
-## 🖥️ Extension Architecture
-
-| Layer                  | Responsibility                       |
-| ---------------------- | ------------------------------------ |
-| **Content Script**     | Injects sidebar UI into ChatGPT      |
-| **Background Worker**  | Handles licensing, storage, alarms   |
-| **Entitlement Module** | Business logic for trial, pro, grace |
-| **Proxy (Cloudflare)** | Secure bridge to Lemon Squeezy       |
-
----
-
-## ☁️ License Proxy
-
-The proxy prevents exposing API keys in the extension.
-
-Supported routes:
-
-| Route         | Purpose                        |
-| ------------- | ------------------------------ |
-| `/activate`   | Activate a license on a device |
-| `/validate`   | Validate a license key         |
-| `/deactivate` | Remove device activation       |
-
----
-
-## 🛠 Development
-
-### Extension
-
-```bash
+```
 cd extension
 npm install
+```
+
+### Build the extension
+
+```
 npm run build
 ```
 
-Load unpacked from Chrome → `chrome://extensions`
+### Build a distributable zip
+
+```
+npm run build:zip
+```
+
+### Load into Chrome
+
+1. Open chrome://extensions
+
+2. Enable Developer Mode
+
+3. Click Load unpacked
+
+4. Select extension/dist
 
 ### Proxy
 
@@ -139,7 +129,52 @@ npm install
 npx wrangler deploy
 ```
 
-## 🧪 Testing Scenarios
+## Available scripts
+
+```
+npm run dev
+npm run build
+npm run build:zip
+npm run preview
+```
+
+## Manifest notes
+
+NavGPT uses Manifest V3.
+
+Current permissions:
+
+- storage
+
+- alarms
+
+Host permissions:
+
+- https://chatgpt.com/*
+
+- https://navgpt-license-proxy.navgpt.workers.dev/*
+
+## Development notes
+
+The most important files for day-to-day work are:
+
+- `extension/src/content/App.tsx`
+
+- `extension/src/dom/scrape.ts`
+
+- `extension/src/dom/selectors.ts`
+
+- `extension/src/dom/page.ts`
+
+- `extension/src/ui/Sidebar.tsx`
+
+- `extension/src/storage/promptMeta.ts`
+
+- `extension/src/background.ts`
+
+For a deeper technical breakdown, see `ARCHITECTURE.md`
+
+## Testing Scenarios
 
 | Scenario                  | Expected Result                          |
 | ------------------------- | ---------------------------------------- |
