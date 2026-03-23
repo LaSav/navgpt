@@ -27,6 +27,7 @@ type SidebarPromptItem = PromptItem & {
 type Props = {
   items: SidebarPromptItem[]
   onJump: (id: string) => void
+  onJumpToHeading: (promptId: string, headingEl: HTMLElement) => void
   onEdit: (id: string) => void
   onCopy: (id: string) => void
   onTogglePin: (id: string) => void
@@ -54,6 +55,7 @@ type View = 'history' | 'settings'
 export default function Sidebar({
   items,
   onJump,
+  onJumpToHeading,
   onEdit,
   onCopy,
   onTogglePin,
@@ -478,11 +480,7 @@ export default function Sidebar({
                           class='item-heading'
                           onClick={(e) => {
                             e.stopPropagation()
-                            h.el.scrollIntoView({
-                              behavior: 'smooth',
-                              block: 'center',
-                            })
-                            onJump(p.id)
+                            onJumpToHeading(p.id, h.el)
                           }}
                           title={h.text}
                           aria-label={`Jump to section: ${h.text}`}

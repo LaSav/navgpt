@@ -13,57 +13,44 @@ export function getScrollParent(node: HTMLElement): HTMLElement {
   return (document.scrollingElement as HTMLElement) || document.documentElement
 }
 
+/**
+ * Generic "snap to element" helper that accounts for sticky top overlays.
+ * Use this for headings, prompt bubbles, or any other in-thread anchor.
+ */
+export function snapToElement(
+  targetEl: HTMLElement,
+  {
+    initialBehavior = 'auto',
+  }: {
+    initialBehavior?: ScrollBehavior
+  } = {},
+) {
+  if (!targetEl.isConnected) return
+
+  const overlay = getTopOverlayOffset()
+  const prev = targetEl.style.scrollMarginTop
+
+  if (overlay > 0) targetEl.style.scrollMarginTop = `${overlay}px`
+
+  targetEl.scrollIntoView({
+    block: 'start',
+    inline: 'nearest',
+    behavior: initialBehavior,
+  })
+
+  requestAnimationFrame(() => {
+    targetEl.style.scrollMarginTop = prev
+  })
+}
+
 export function snapToPrompt(targetEl: HTMLElement) {
   const article =
     (targetEl.closest(SEL.userTurn) as HTMLElement | null) ?? targetEl
   if (!article.isConnected) return
 
-  const scroller = getScrollParent(article)
-
-  article.scrollIntoView({
-    block: 'start',
-    inline: 'nearest',
-    behavior: 'auto' as ScrollBehavior,
+  snapToElement(article, {
+    initialBehavior: 'auto',
   })
-
-  let frames = 0
-  let lastTop: number | null = null
-  let stable = 0
-
-  const maxFrames = 12
-  const stableEps = 0.5
-  const minCorrectPx = 14
-
-  const refine = () => {
-    if (!article.isConnected) return
-
-    const top = article.getBoundingClientRect().top
-    const overlay = getTopOverlayOffset()
-
-    if (lastTop !== null && Math.abs(top - lastTop) < stableEps) stable++
-    else stable = 0
-    lastTop = top
-
-    if (stable >= 2 || frames >= maxFrames) {
-      const rect = article.getBoundingClientRect()
-      const viewportTop =
-        scroller === document.scrollingElement
-          ? 0
-          : scroller.getBoundingClientRect().top
-
-      const delta = rect.top - viewportTop - overlay
-
-      if (Math.abs(delta) > minCorrectPx) {
-        scroller.scrollBy({ top: delta, behavior: 'smooth' })
-      }
-      return
-    }
-
-    frames++
-    requestAnimationFrame(refine)
-  }
-
-  requestAnimationFrame(() => requestAnimationFrame(refine))
 }
 
 export function scrollSidebarActiveIntoView(

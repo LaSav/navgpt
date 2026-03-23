@@ -10,6 +10,7 @@ import {
   getScrollParent,
   scrollSidebarActiveIntoView,
   snapToPrompt,
+  snapToElement,
 } from '../dom/scroll'
 import { useEntitlement } from './hooks/useEntitlement'
 import { useLayoutPadding } from './hooks/useLayoutPadding'
@@ -137,6 +138,14 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     if (!target) return
 
     focusPromptInUi(id, target)
+  }
+
+  const onJumpToHeading = (promptId: string, headingEl: HTMLElement) => {
+    snapToElement(headingEl, {
+      initialBehavior: 'auto',
+    })
+    setActiveId(promptId)
+    scrollSidebarActiveIntoView(shadowMount, promptId)
   }
 
   const onEdit = async (id: string) => {
@@ -333,6 +342,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     <Sidebar
       items={visibleItems}
       onJump={onJump}
+      onJumpToHeading={onJumpToHeading}
       activeId={activeId}
       isOpen={isOpen}
       onToggle={handleToggle}
