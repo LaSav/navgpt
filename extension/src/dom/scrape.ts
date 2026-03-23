@@ -3,6 +3,12 @@ import { SEL } from './selectors'
 import { getActiveThread } from './page'
 import { getConversationId } from './getConversationId'
 
+export type ResponseHeading = {
+  id: string
+  text: string
+  el: HTMLElement
+}
+
 export type PromptItem = {
   id: string
   text: string
@@ -15,6 +21,8 @@ export type PromptItem = {
 
   conversationId?: string
   turnId?: string
+
+  headings: ResponseHeading[]
 }
 
 function summarize(text: string, max = 2000): string {
@@ -46,6 +54,50 @@ function parseRevisionInfo(article: HTMLElement | null) {
     totalVersions: total,
     edits: Math.max(0, total - 1),
   }
+}
+
+function normalizeHeadingText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+function getAssistantTurnContentEl(article: HTMLElement): HTMLElement {
+  return (
+    article.querySelector<HTMLElement>(SEL.assistantMessageBubble) ?? article
+  )
+}
+
+function scrapeResponseHeadings(
+  article: HTMLElement | null,
+): ResponseHeading[] {
+  if (!article) return []
+
+  const contentEl = getAssistantTurnContentEl(article)
+  const headingEls = Array.from(
+    contentEl.querySelectorAll<HTMLElement>(SEL.responseHeading),
+  )
+
+  const seen = new Set<string>()
+  const headings: ResponseHeading[] = []
+
+  for (const h2 of headingEls) {
+    const text = normalizeHeadingText(h2.innerText || h2.textContent || '')
+    if (!text) continue
+
+    const dedupeKey = text.toLowerCase()
+    if (seen.has(dedupeKey)) continue
+    seen.add(dedupeKey)
+
+    const id = h2.id || uid('heading')
+    if (!h2.id) h2.id = id
+
+    headings.push({
+      id,
+      text,
+      el: h2,
+    })
+  }
+
+  return headings
 }
 
 /**
@@ -97,10 +149,15 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   if (!scrapeRoot) return []
 
   const conversationId = getConversationId() ?? undefined
-  const articles = scrapeRoot.querySelectorAll<HTMLElement>(SEL.userTurn)
+  const turns = Array.from(scrapeRoot.querySelectorAll<HTMLElement>(SEL.turn))
   const items: PromptItem[] = []
 
-  for (const article of Array.from(articles)) {
+  for (let i = 0; i < turns.length; i++) {
+    const article = turns[i]
+    const turnKind = article.getAttribute('data-turn')
+
+    if (turnKind !== 'user') continue
+
     const turnId = article.getAttribute('data-turn-id') ?? undefined
 
     const textarea = article.querySelector<HTMLTextAreaElement>(SEL.textarea)
@@ -126,6 +183,23 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
 
     const { currentVersion, totalVersions, edits } = parseRevisionInfo(article)
 
+    let nextAssistantTurn: HTMLElement | null = null
+    for (let j = i + 1; j < turns.length; j++) {
+      const candidate = turns[j]
+      const candidateKind = candidate.getAttribute('data-turn')
+
+      if (candidateKind === 'assistant') {
+        nextAssistantTurn = candidate
+        break
+      }
+
+      if (candidateKind === 'user') {
+        break
+      }
+    }
+
+    const headings = scrapeResponseHeadings(nextAssistantTurn)
+
     items.push({
       id,
       text: summarize(rawText, 360),
@@ -137,6 +211,7 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       isEditing,
       conversationId,
       turnId,
+      headings,
     })
   }
 

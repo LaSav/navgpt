@@ -469,6 +469,29 @@ export default function Sidebar({
                       <span class='item-footer__spacer' aria-hidden='true' />
                     )}
                   </div>
+                  {!!p.headings?.length && (
+                    <div class='item-headings'>
+                      {p.headings.map((h) => (
+                        <button
+                          key={h.id}
+                          type='button'
+                          class='item-heading'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            h.el.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'center',
+                            })
+                            onJump(p.id)
+                          }}
+                          title={h.text}
+                          aria-label={`Jump to section: ${h.text}`}
+                        >
+                          {h.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}

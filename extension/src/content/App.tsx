@@ -300,6 +300,9 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
               ...item,
               rawText: prevItem.rawText,
               text: prevItem.text,
+              headings: item.headings?.length
+                ? item.headings
+                : prevItem.headings,
             }
           }
 
