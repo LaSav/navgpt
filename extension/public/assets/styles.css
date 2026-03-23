@@ -197,9 +197,21 @@
 
 .item-footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   margin-top: 0.15rem;
+}
+
+.item-footer__center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.item-footer__spacer {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
 }
 
 .item-badges .badge {

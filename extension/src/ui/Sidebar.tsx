@@ -385,71 +385,74 @@ export default function Sidebar({
                       <Copy size={12} />
                     </button>
 
-                    {isPro ? (
-                      p.edits > 0 && (
-                        <div class='edits-controls'>
-                          <span class='badge badge--edits'>
-                            <button
-                              type='button'
-                              class='badge__button'
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onPreviousVersion(p.id)
-                              }}
-                              disabled={!canPrevVersion}
-                              aria-label='Previous edit version'
-                            >
-                              <ArrowLeft />
-                            </button>
+                    <div class='item-footer__center'>
+                      {isPro ? (
+                        p.edits > 0 && (
+                          <div class='edits-controls'>
+                            <span class='badge badge--edits'>
+                              <button
+                                type='button'
+                                class='badge__button'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onPreviousVersion(p.id)
+                                }}
+                                disabled={!canPrevVersion}
+                                aria-label='Previous edit version'
+                              >
+                                <ArrowLeft />
+                              </button>
 
-                            <span
-                              class='badge-text'
-                              title={`${p.totalVersions} edits`}
-                            >
-                              {p.currentVersion} / {p.totalVersions}
+                              <span
+                                class='badge-text'
+                                title={`${p.totalVersions} edits`}
+                              >
+                                {p.currentVersion} / {p.totalVersions}
+                              </span>
+
+                              <button
+                                type='button'
+                                class='badge__button'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onNextVersion(p.id)
+                                }}
+                                disabled={!canNextVersion}
+                                aria-label='Next edit version'
+                              >
+                                <ArrowRight />
+                              </button>
                             </span>
-
+                          </div>
+                        )
+                      ) : (
+                        <div class='edits-controls'>
+                          {p.isEditing ? (
+                            <span class='badge badge--editing'>editing</span>
+                          ) : (
                             <button
                               type='button'
-                              class='badge__button'
+                              class='badge__locked-btn badge__btn--iconlabel'
                               onClick={(e) => {
                                 e.stopPropagation()
-                                onNextVersion(p.id)
+                                onRequirePro?.(
+                                  'Branch detection & navigation are pro features. Upgrade to access.',
+                                )
                               }}
-                              disabled={!canNextVersion}
-                              aria-label='Next edit version'
+                              title='Version history & branching is available on Pro'
                             >
-                              <ArrowRight />
+                              <Locked /> / <Locked />
                             </button>
-                          </span>
+                          )}
                         </div>
-                      )
-                    ) : (
-                      <div class='edits-controls'>
-                        {p.isEditing ? (
-                          <span class='badge badge--editing'>editing</span>
-                        ) : (
-                          <button
-                            type='button'
-                            class='badge__locked-btn badge__btn--iconlabel'
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onRequirePro?.(
-                                'Branch detection & navigation are pro features. Upgrade to access.',
-                              )
-                            }}
-                            title='Version history & branching is available on Pro'
-                          >
-                            <Locked /> / <Locked />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {isPro && p.isEditing && (
-                      <span class='badge badge--editing'>editing</span>
-                    )}
+                      )}
 
-                    {canEdit && (
+                      {isPro && p.isEditing && (
+                        <span class='badge badge--editing'>editing</span>
+                      )}
+                    </div>
+
+                    {canEdit ? (
                       <button
                         type='button'
                         class='badge__button'
@@ -462,6 +465,8 @@ export default function Sidebar({
                       >
                         <Edit size={12} />
                       </button>
+                    ) : (
+                      <span class='item-footer__spacer' aria-hidden='true' />
                     )}
                   </div>
                 </div>
