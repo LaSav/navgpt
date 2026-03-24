@@ -3,12 +3,6 @@ import { SEL } from './selectors'
 import { getActiveThread } from './page'
 import { getConversationId } from './getConversationId'
 
-export type ResponseHeading = {
-  id: string
-  text: string
-  el: HTMLElement
-}
-
 export type PromptItem = {
   id: string
   text: string
@@ -22,7 +16,8 @@ export type PromptItem = {
   conversationId?: string
   turnId?: string
 
-  headings: ResponseHeading[]
+  hasResponse: boolean
+  responseEl?: HTMLElement
 }
 
 function summarize(text: string, max = 2000): string {
@@ -54,50 +49,6 @@ function parseRevisionInfo(article: HTMLElement | null) {
     totalVersions: total,
     edits: Math.max(0, total - 1),
   }
-}
-
-function normalizeHeadingText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim()
-}
-
-function getAssistantTurnContentEl(article: HTMLElement): HTMLElement {
-  return (
-    article.querySelector<HTMLElement>(SEL.assistantMessageBubble) ?? article
-  )
-}
-
-function scrapeResponseHeadings(
-  article: HTMLElement | null,
-): ResponseHeading[] {
-  if (!article) return []
-
-  const contentEl = getAssistantTurnContentEl(article)
-  const headingEls = Array.from(
-    contentEl.querySelectorAll<HTMLElement>(SEL.responseHeading),
-  )
-
-  const seen = new Set<string>()
-  const headings: ResponseHeading[] = []
-
-  for (const h2 of headingEls) {
-    const text = normalizeHeadingText(h2.innerText || h2.textContent || '')
-    if (!text) continue
-
-    const dedupeKey = text.toLowerCase()
-    if (seen.has(dedupeKey)) continue
-    seen.add(dedupeKey)
-
-    const id = h2.id || uid('heading')
-    if (!h2.id) h2.id = id
-
-    headings.push({
-      id,
-      text,
-      el: h2,
-    })
-  }
-
-  return headings
 }
 
 /**
@@ -143,6 +94,10 @@ function normalizeUserTurnText(text: string): string {
 /**
  * Scrape user prompt turns ONLY from the active thread.
  * If no thread exists, returns [].
+ *
+ * Each prompt item is also paired with the next assistant turn, if one exists,
+ * so the sidebar can expose a lightweight "response" affordance without
+ * scraping or storing the full response text.
  */
 export function scrapePrompts(root: ParentNode = document): PromptItem[] {
   const scrapeRoot = getScrapeRoot(root)
@@ -184,6 +139,7 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
     const { currentVersion, totalVersions, edits } = parseRevisionInfo(article)
 
     let nextAssistantTurn: HTMLElement | null = null
+
     for (let j = i + 1; j < turns.length; j++) {
       const candidate = turns[j]
       const candidateKind = candidate.getAttribute('data-turn')
@@ -198,8 +154,6 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       }
     }
 
-    const headings = scrapeResponseHeadings(nextAssistantTurn)
-
     items.push({
       id,
       text: summarize(rawText, 360),
@@ -211,7 +165,8 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       isEditing,
       conversationId,
       turnId,
-      headings,
+      hasResponse: !!nextAssistantTurn,
+      responseEl: nextAssistantTurn ?? undefined,
     })
   }
 
@@ -351,6 +306,7 @@ export function observePrompts(
           i.currentVersion,
           i.totalVersions,
           i.isEditing ? 1 : 0,
+          i.hasResponse ? 1 : 0,
           t.length,
           t.slice(0, 80),
         ].join('|')

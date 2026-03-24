@@ -16,6 +16,7 @@ import { Locked } from './icons/Locked'
 import { Bookmark } from './icons/Bookmark'
 import { BookmarkFilled } from './icons/BookmarkFilled'
 import { Toast } from './Toast'
+import { ResponseArrow } from './icons/ResponseArrow'
 
 const CHECKOUT_URL =
   'https://navgpt.lemonsqueezy.com/checkout/buy/8936bcb2-d8cb-4dd5-9596-1943569a04fe'
@@ -27,7 +28,7 @@ type SidebarPromptItem = PromptItem & {
 type Props = {
   items: SidebarPromptItem[]
   onJump: (id: string) => void
-  onJumpToHeading: (promptId: string, headingEl: HTMLElement) => void
+  onJumpToResponse: (promptId: string, responseEl: HTMLElement) => void
   onEdit: (id: string) => void
   onCopy: (id: string) => void
   onTogglePin: (id: string) => void
@@ -55,7 +56,7 @@ type View = 'history' | 'settings'
 export default function Sidebar({
   items,
   onJump,
-  onJumpToHeading,
+  onJumpToResponse,
   onEdit,
   onCopy,
   onTogglePin,
@@ -322,6 +323,8 @@ export default function Sidebar({
               const canNextVersion = p.currentVersion < p.totalVersions
               const canPin = !!p.conversationId && !!p.turnId
               const canEdit = idx === items.length - 1
+              const responseEl = p.responseEl
+              const canJumpToResponse = p.hasResponse && !!responseEl
 
               return (
                 <div
@@ -342,38 +345,6 @@ export default function Sidebar({
                 >
                   <div class='item-meta'>
                     <span class='meta--index'>{idx + 1}</span>
-                    <button
-                      type='button'
-                      class={`badge__button ${p.pinned ? 'badge__button--active' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (!canPin) return
-                        onTogglePin(p.id)
-                      }}
-                      disabled={!canPin}
-                      aria-pressed={p.pinned}
-                      aria-label={p.pinned ? 'Unpin prompt' : 'Pin prompt'}
-                      title={
-                        !canPin
-                          ? 'Pin unavailable for this prompt'
-                          : p.pinned
-                            ? 'Unpin prompt'
-                            : 'Pin prompt'
-                      }
-                    >
-                      {p.pinned ? (
-                        <BookmarkFilled size={15} />
-                      ) : (
-                        <Bookmark size={15} />
-                      )}
-                    </button>
-                  </div>
-
-                  <div class='text-row'>
-                    <div class='text'>{p.text}</div>
-                  </div>
-
-                  <div class='item-footer'>
                     <button
                       type='button'
                       class='badge__button'
@@ -470,25 +441,49 @@ export default function Sidebar({
                     ) : (
                       <span class='item-footer__spacer' aria-hidden='true' />
                     )}
+                    <button
+                      type='button'
+                      class={`badge__button ${p.pinned ? 'badge__button--active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (!canPin) return
+                        onTogglePin(p.id)
+                      }}
+                      disabled={!canPin}
+                      aria-pressed={p.pinned}
+                      aria-label={p.pinned ? 'Unpin prompt' : 'Pin prompt'}
+                      title={
+                        !canPin
+                          ? 'Pin unavailable for this prompt'
+                          : p.pinned
+                            ? 'Unpin prompt'
+                            : 'Pin prompt'
+                      }
+                    >
+                      {p.pinned ? (
+                        <BookmarkFilled size={15} />
+                      ) : (
+                        <Bookmark size={15} />
+                      )}
+                    </button>
                   </div>
-                  {!!p.headings?.length && (
-                    <div class='item-headings'>
-                      {p.headings.map((h) => (
-                        <button
-                          key={h.id}
-                          type='button'
-                          class='item-heading'
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onJumpToHeading(p.id, h.el)
-                          }}
-                          title={h.text}
-                          aria-label={`Jump to section: ${h.text}`}
-                        >
-                          {h.text}
-                        </button>
-                      ))}
-                    </div>
+
+                  <div class='text-row'>
+                    <div class='text'>{p.text}</div>
+                  </div>
+                  {canJumpToResponse && (
+                    <button
+                      type='button'
+                      class='response-link'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onJumpToResponse(p.id, responseEl)
+                      }}
+                      aria-label='Jump to response'
+                    >
+                      response
+                      <ResponseArrow size={14} />
+                    </button>
                   )}
                 </div>
               )

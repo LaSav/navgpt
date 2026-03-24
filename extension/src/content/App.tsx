@@ -140,8 +140,8 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     focusPromptInUi(id, target)
   }
 
-  const onJumpToHeading = (promptId: string, headingEl: HTMLElement) => {
-    snapToElement(headingEl, {
+  const onJumpToResponse = (promptId: string, responseEl: HTMLElement) => {
+    snapToElement(responseEl, {
       initialBehavior: 'auto',
     })
     setActiveId(promptId)
@@ -309,9 +309,8 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
               ...item,
               rawText: prevItem.rawText,
               text: prevItem.text,
-              headings: item.headings?.length
-                ? item.headings
-                : prevItem.headings,
+              hasResponse: item.hasResponse ?? prevItem.hasResponse,
+              responseEl: item.responseEl ?? prevItem.responseEl,
             }
           }
 
@@ -342,7 +341,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     <Sidebar
       items={visibleItems}
       onJump={onJump}
-      onJumpToHeading={onJumpToHeading}
+      onJumpToResponse={onJumpToResponse}
       activeId={activeId}
       isOpen={isOpen}
       onToggle={handleToggle}

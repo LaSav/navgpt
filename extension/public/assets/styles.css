@@ -191,6 +191,26 @@
   background: var(--hover-bg);
 }
 
+.response-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  justify-content: center;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.55rem;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  color: var(--text-secondary);
+  display: flex;
+  line-height: 1.75;
+  gap: 0.15rem;
+}
+
+.response-link:hover {
+  background: var(--hover-bg);
+}
+
 .item:not(.item--active) .badge {
   opacity: 0.9;
 }
