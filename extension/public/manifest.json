@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "1.0.6",
+  "version": "1.0.7",
   "name": "NavGPT - Prompt History & Version Control for ChatGPT",
   "short_name": "NavGPT",
   "description": "Navigate ChatGPT conversations with prompt history, branching, and instant navigation.",
