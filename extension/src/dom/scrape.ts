@@ -11,7 +11,6 @@ export type PromptItem = {
   edits: number
   totalVersions: number
   currentVersion: number
-  isEditing: boolean
 
   conversationId?: string
   turnId?: string
@@ -116,7 +115,6 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
     const turnId = article.getAttribute('data-turn-id') ?? undefined
 
     const textarea = article.querySelector<HTMLTextAreaElement>(SEL.textarea)
-    const isEditing = !!textarea
 
     let scrollTarget: HTMLElement = article
     let rawText = ''
@@ -162,7 +160,6 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       edits,
       totalVersions,
       currentVersion,
-      isEditing,
       conversationId,
       turnId,
       hasResponse: !!nextAssistantTurn,
@@ -305,7 +302,6 @@ export function observePrompts(
           i.edits,
           i.currentVersion,
           i.totalVersions,
-          i.isEditing ? 1 : 0,
           i.hasResponse ? 1 : 0,
           t.length,
           t.slice(0, 80),

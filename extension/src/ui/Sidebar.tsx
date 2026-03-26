@@ -399,28 +399,20 @@ export default function Sidebar({
                         )
                       ) : (
                         <div class='edits-controls'>
-                          {p.isEditing ? (
-                            <span class='badge badge--editing'>editing</span>
-                          ) : (
-                            <button
-                              type='button'
-                              class='badge__locked-btn badge__btn--iconlabel'
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onRequirePro?.(
-                                  'Branch detection & navigation are pro features. Upgrade to access.',
-                                )
-                              }}
-                              title='Version history & branching is available on Pro'
-                            >
-                              <Locked /> / <Locked />
-                            </button>
-                          )}
+                          <button
+                            type='button'
+                            class='badge__locked-btn badge__btn--iconlabel'
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onRequirePro?.(
+                                'Branch detection & navigation are pro features. Upgrade to access.',
+                              )
+                            }}
+                            title='Version history & branching is available on Pro'
+                          >
+                            <Locked /> / <Locked />
+                          </button>
                         </div>
-                      )}
-
-                      {isPro && p.isEditing && (
-                        <span class='badge badge--editing'>editing</span>
                       )}
                     </div>
 
