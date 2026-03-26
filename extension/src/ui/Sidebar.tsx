@@ -322,7 +322,6 @@ export default function Sidebar({
               const canPrevVersion = p.currentVersion > 1
               const canNextVersion = p.currentVersion < p.totalVersions
               const canPin = !!p.conversationId && !!p.turnId
-              const canEdit = idx === items.length - 1
               const responseEl = p.responseEl
               const canJumpToResponse = p.hasResponse && !!responseEl
 
@@ -425,22 +424,18 @@ export default function Sidebar({
                       )}
                     </div>
 
-                    {canEdit ? (
-                      <button
-                        type='button'
-                        class='badge__button'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onEdit(p.id)
-                        }}
-                        title='Edit prompt'
-                        aria-label='Edit prompt'
-                      >
-                        <Edit size={12} />
-                      </button>
-                    ) : (
-                      <span class='item-footer__spacer' aria-hidden='true' />
-                    )}
+                    <button
+                      type='button'
+                      class='badge__button'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onEdit(p.id)
+                      }}
+                      title='Edit prompt'
+                      aria-label='Edit prompt'
+                    >
+                      <Edit size={12} />
+                    </button>
                     <button
                       type='button'
                       class={`badge__button ${p.pinned ? 'badge__button--active' : ''}`}
