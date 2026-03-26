@@ -218,14 +218,8 @@
 .item-footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   margin-top: 0.15rem;
-}
-
-.item-footer__center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  min-width: 0;
 }
 
 .item-footer__spacer {
@@ -261,11 +255,11 @@
   align-items: center;
 }
 
-.meta--index {
-  opacity: 0.45;
-  font-size: 11px;
-  font-weight: 500;
-  flex-shrink: 0;
+.item-meta__center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
 
 .visibile-items-hint {

@@ -343,21 +343,19 @@ export default function Sidebar({
                   }}
                 >
                   <div class='item-meta'>
-                    <span class='meta--index'>{idx + 1}</span>
                     <button
                       type='button'
                       class='badge__button'
                       onClick={(e) => {
                         e.stopPropagation()
-                        onCopy(p.id)
+                        onEdit(p.id)
                       }}
-                      title='Copy prompt'
-                      aria-label='Copy prompt'
+                      title='Edit prompt'
+                      aria-label='Edit prompt'
                     >
-                      <Copy size={12} />
+                      <Edit size={12} />
                     </button>
-
-                    <div class='item-footer__center'>
+                    <div class='item-meta__center'>
                       {isPro ? (
                         p.edits > 0 && (
                           <div class='edits-controls'>
@@ -415,19 +413,6 @@ export default function Sidebar({
                         </div>
                       )}
                     </div>
-
-                    <button
-                      type='button'
-                      class='badge__button'
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onEdit(p.id)
-                      }}
-                      title='Edit prompt'
-                      aria-label='Edit prompt'
-                    >
-                      <Edit size={12} />
-                    </button>
                     <button
                       type='button'
                       class={`badge__button ${p.pinned ? 'badge__button--active' : ''}`}
@@ -458,20 +443,34 @@ export default function Sidebar({
                   <div class='text-row'>
                     <div class='text'>{p.text}</div>
                   </div>
-                  {canJumpToResponse && (
+                  <div class='item-footer'>
                     <button
                       type='button'
-                      class='response-link'
+                      class='badge__button'
                       onClick={(e) => {
                         e.stopPropagation()
-                        onJumpToResponse(p.id, responseEl)
+                        onCopy(p.id)
                       }}
-                      aria-label='Jump to response'
+                      title='Copy prompt'
+                      aria-label='Copy prompt'
                     >
-                      response
-                      <ResponseArrow size={14} />
+                      <Copy size={12} />
                     </button>
-                  )}
+                    {canJumpToResponse && (
+                      <button
+                        type='button'
+                        class='response-link'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onJumpToResponse(p.id, responseEl)
+                        }}
+                        aria-label='Jump to response'
+                      >
+                        response
+                        <ResponseArrow size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )
             })}
