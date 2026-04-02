@@ -13,6 +13,7 @@ NavGPT is designed to:
 - inject a sidebar into ChatGPT
 - build a prompt-history model from the active thread
 - support navigation between prompts and prompt versions
+- support lightweight prompt-to-response navigation
 - persist lightweight prompt metadata
 - handle Pro entitlement cleanly in a Manifest V3 extension
 
@@ -37,6 +38,7 @@ Responsible for:
 - prompt scraping
 - thread observation
 - navigation actions
+- prompt-to-response association
 - storage-backed prompt metadata
 - entitlement-aware UI
 - background service worker logic
@@ -121,6 +123,9 @@ Responsibilities:
   - copy
   - pin / unpin
   - version navigation
+  - jump to paired response
+- preserve previous prompt text during transient scrape gaps
+- preserve prompt-to-response linkage during transient DOM states
 - apply Pro gating
 - keep UI and page state in sync
 
@@ -145,11 +150,13 @@ Fields:
 - `edits` — detected number of edits
 - `totalVersions` — detected version count
 - `currentVersion` — active version index
-- `isEditing` — whether the prompt is currently in edit mode
 - `conversationId` — current conversation id from the URL
 - `turnId` — turn id from the DOM if available
+- `hasResponse` — whether this prompt currently has an associated assistant response turn
+- `responseEl` — the paired assistant turn element, when one exists
 
 Important: this is a scraped model, not a ChatGPT API object.
+Important: response data is intentionally lightweight. NavGPT links a prompt to its next assistant turn in the DOM, but does not scrape or persist the full response body as part of the prompt model.
 
 ---
 
@@ -251,6 +258,8 @@ Responsibilities:
 
 - expose observePrompts() for reactive updates
 
+- pair each user prompt with its next assistant response turn, if present
+
 ### Important behaviors
 
 #### Active-thread-only scraping
@@ -282,6 +291,19 @@ Version info comes from either:
 #### Text normalization
 
 Prompt text is trimmed, normalized to one line for display, and kept in full form as rawText.
+
+#### Prompt-to-response pairing
+
+Each scraped user prompt is paired with the next assistant turn, stopping at the next user turn boundary.
+
+This pairing is intentionally structural and local:
+
+- it uses DOM adjacency within the active thread
+- it does not store response text
+- it exists to support navigation to the corresponding response
+- it avoids expanding NavGPT into a full assistant-message indexing system
+
+This keeps the response feature lightweight and resilient.
 
 ---
 
@@ -337,7 +359,11 @@ Purpose:
 
 - deduplicates updates using a lightweight signature
 
+- includes response presence in the update signature so prompt-to-response linkage stays in sync
+
 This is a key UX detail: prompt text should not flicker or update aggressively while the user edits a prompt.
+
+Another important detail: the observer treats DOM mutations as dirty signals, then re-scrapes the active thread and derives prompt state again. It does not attempt fine-grained incremental bookkeeping for response linkage.
 
 ---
 
@@ -372,6 +398,8 @@ Displays the prompt list and exposes actions:
 - show active state
 
 - show locked Pro affordances for gated features
+
+- jump to paired response when available
 
 #### Settings view
 
@@ -431,6 +459,8 @@ Metadata supported by the storage model but not yet fully surfaced:
 - writes clone state instead of mutating loaded storage directly
 
 - pinning is keyed by conversationId + turnId
+
+Response linkage is **not** persisted. It is derived live from the active thread DOM on each scrape.
 
 This keeps storage compact and resilient to partial or old data.
 
@@ -583,7 +613,7 @@ Key points:
 
 - `src/dom/page.ts` — page kind and active thread detection
 
-- `src/dom/scrape.ts` — prompt extraction and prompt observation
+- `src/dom/scrape.ts` — prompt extraction, response pairing, and prompt observation
 
 - `src/dom/navigationWatcher.ts` — SPA navigation watching
 
@@ -629,19 +659,30 @@ Do not scatter new ChatGPT selectors across the app. Add them to dom/selectors.t
 
 Do not broaden scraping to the entire page.
 
-### 3. Avoid live mutation churn while typing
+### 3. Keep response linkage lightweight
+
+Do not turn prompt scraping into full assistant-response scraping unless there is a deliberate product decision to support response indexing or storage.
+
+The current design should remain:
+
+- prompt-centric
+- active-thread-only
+- DOM-linked
+- non-persistent for response data
+
+### 4. Avoid live mutation churn while typing
 
 Do not reintroduce aggressive rescans while an editor is focused.
 
-### 4. Prefer stable attributes over classes
+### 5. Prefer stable attributes over classes
 
 Use data-testid, aria-label, and semantic anchors before class names.
 
-### 5. Keep the sidebar shadow-isolated
+### 6. Keep the sidebar shadow-isolated
 
 Do not move the UI out of shadow DOM unless there is a strong reason.
 
-### 6. Preserve MV3 assumptions
+### 7. Preserve MV3 assumptions
 
 Do not depend on background worker memory for durable state.
 
@@ -673,6 +714,10 @@ Typical symptoms of DOM breakage:
 
 - `layout overlap returns`
 
+- `response jump stops working`
+
+- `prompt-response pairing is wrong`
+
 The usual first response should be:
 
 1. inspect ChatGPT markup
@@ -682,6 +727,8 @@ The usual first response should be:
 3. verify active-thread detection
 
 4. verify scrape assumptions
+
+5. verify prompt-to-next-assistant pairing assumptions
 
 ---
 
@@ -729,6 +776,18 @@ Include:
 
 - `navgpt-license-proxy/src/index.ts`
 
+### If the issue is “response jump is wrong”
+
+Include:
+
+- `src/dom/selectors.ts`
+
+- `src/dom/scrape.ts`
+
+- `src/content/App.tsx`
+
+- `src/dom/scroll.ts`
+
 ### Good constraints to specify
 
 - preserve MV3 compatibility
@@ -742,3 +801,5 @@ Include:
 - prefer stable attributes
 
 - preserve shadow DOM isolation
+
+- keep response linkage lightweight
