@@ -17,6 +17,7 @@ import { Bookmark } from './icons/Bookmark'
 import { BookmarkFilled } from './icons/BookmarkFilled'
 import { Toast } from './Toast'
 import { ResponseArrow } from './icons/ResponseArrow'
+import { Export } from './icons/Export'
 
 const CHECKOUT_URL =
   'https://navgpt.lemonsqueezy.com/checkout/buy/8936bcb2-d8cb-4dd5-9596-1943569a04fe'
@@ -49,6 +50,7 @@ type Props = {
   } | null
   onDismissToast?: () => void
   totalCount?: number
+  onExport: () => void
 }
 
 type View = 'history' | 'settings'
@@ -73,6 +75,7 @@ export default function Sidebar({
   toast,
   onDismissToast,
   totalCount,
+  onExport,
 }: Props) {
   const panelId = 'prompt-history-sidebar'
   const [view, setView] = useState<View>('history')
@@ -279,6 +282,18 @@ export default function Sidebar({
                   disabled={!canGoNext}
                 >
                   <ArrowDown size={18} />
+                </button>
+              </Tooltip>
+
+              <Tooltip label='Export chat'>
+                <button
+                  type='button'
+                  class='header-iconButton'
+                  onClick={onExport}
+                  aria-label='Export chat'
+                  disabled={items.length === 0}
+                >
+                  <Export size={18} />
                 </button>
               </Tooltip>
 

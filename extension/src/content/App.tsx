@@ -32,6 +32,11 @@ type SidebarPromptItem = PromptItem & {
   pinned: boolean
 }
 
+function extractResponseText(el: HTMLElement): string {
+  const prose = el.querySelector<HTMLElement>('.prose')
+  return (prose ?? el).innerText.trim()
+}
+
 export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const [items, setItems] = useState<PromptItem[]>(() => scrapePrompts())
   const [metaState, setMetaState] = useState<PersistedState>()
@@ -279,6 +284,58 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const handlePreviousPrompt = () => goToPromptByOffset(-1)
   const handleToggle = () => setIsOpen((prev) => !prev)
 
+  const handleExport = () => {
+    const lines: string[] = []
+
+    const pageTitle =
+      document.title.replace(/\s*[-|]\s*ChatGPT\s*$/i, '').trim() || 'Chat'
+    const date = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+    lines.push(`# ${pageTitle}`)
+    lines.push(`*Exported ${date} via NavGPT*`)
+    lines.push('')
+    lines.push('---')
+    lines.push('')
+
+    for (const item of visibleItems) {
+      lines.push('**User**')
+      lines.push('')
+      lines.push(item.rawText.trim())
+      lines.push('')
+
+      if (item.hasResponse && item.responseEl) {
+        const responseText = extractResponseText(item.responseEl)
+        if (responseText) {
+          lines.push('**Assistant**')
+          lines.push('')
+          lines.push(responseText)
+          lines.push('')
+        }
+      }
+
+      lines.push('---')
+      lines.push('')
+    }
+
+    const content = lines.join('\n')
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const slug = pageTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40)
+    const dateStr = new Date().toISOString().slice(0, 10)
+    a.download = `navgpt-${slug}-${dateStr}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   useEffect(() => {
     const uninstall = installNavigationWatcher(() => {
       setShouldShow(shouldShowSidebar())
@@ -339,6 +396,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
 
   return shouldShow ? (
     <Sidebar
+      onExport={handleExport}
       items={visibleItems}
       onJump={onJump}
       onJumpToResponse={onJumpToResponse}
