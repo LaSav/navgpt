@@ -16,8 +16,8 @@ Built with:
 - Copy prompt text
 - Re-open prompts for editing
 - Pin prompts per conversation
-- Prompt version / branch navigation for Pro users
-- Lightweight Pro entitlement flow
+- Prompt version / branch navigation
+- Export conversation to Markdown
 
 ## Why NavGPT exists
 
@@ -54,13 +54,10 @@ Because ChatGPT does not expose a stable public API for this kind of integration
 │   │   ├── content.tsx
 │   │   ├── content/
 │   │   ├── dom/
-│   │   ├── entitlement/
 │   │   ├── storage/
 │   │   ├── ui/
 │   │   └── util/
 │   └── vite.config.ts
-├── navgpt-license-proxy
-│   └── src/index.ts
 └── README.md
 ```
 
@@ -72,117 +69,78 @@ The content script mounts a shadow-DOM sidebar into ChatGPT and renders the Prea
 
 ### DOM integration
 
-The extension identifies the active thread, scrapes user prompts, detects edit/version controls, and keeps the sidebar in sync with ChatGPT’s single-page-app navigation.
+The extension identifies the active thread, scrapes user prompts, detects edit/version controls, and keeps the sidebar in sync with ChatGPT's single-page-app navigation.
 
 ### Background worker
 
-An MV3 service worker manages entitlement state, trial bootstrapping, and recurring license validation.
-
-### License proxy
-
-A small Cloudflare Worker proxies Lemon Squeezy license requests.
+A minimal MV3 service worker stub. All durable state lives in `chrome.storage.local`.
 
 ## Installation
 
 ### Requirements
 
 - Node.js
-
 - npm
-
 - Chrome or another Chromium-based browser
 
 ### Install dependencies
 
-```
+```bash
 cd extension
 npm install
 ```
 
 ### Build the extension
 
-```
+```bash
 npm run build
 ```
 
 ### Build a distributable zip
 
-```
+```bash
 npm run build:zip
 ```
 
 ### Load into Chrome
 
-1. Open chrome://extensions
-
+1. Open `chrome://extensions`
 2. Enable Developer Mode
-
-3. Click Load unpacked
-
-4. Select extension/dist
-
-### Proxy
-
-```bash
-cd navgpt-license-proxy
-npm install
-npx wrangler deploy
-```
+3. Click **Load unpacked**
+4. Select `extension/dist`
 
 ## Available scripts
 
-```
-npm run dev
-npm run build
-npm run build:zip
-npm run preview
+```bash
+npm run dev        # Vite dev server (UI iteration only)
+npm run build      # Full build
+npm run build:zip  # Build + package into navgpt-extension.zip
 ```
 
 ## Manifest notes
 
 NavGPT uses Manifest V3.
 
-Current permissions:
+Permissions:
 
-- storage
-
-- alarms
+- `storage`
 
 Host permissions:
 
-- https://chatgpt.com/*
-
-- https://navgpt-license-proxy.navgpt.workers.dev/*
+- `https://chatgpt.com/*`
 
 ## Development notes
 
 The most important files for day-to-day work are:
 
 - `extension/src/content/App.tsx`
-
 - `extension/src/dom/scrape.ts`
-
 - `extension/src/dom/selectors.ts`
-
 - `extension/src/dom/page.ts`
-
 - `extension/src/ui/Sidebar.tsx`
-
 - `extension/src/storage/promptMeta.ts`
 
-- `extension/src/background.ts`
-
-For a deeper technical breakdown, see `ARCHITECTURE.md`
-
-## Testing Scenarios
-
-| Scenario                  | Expected Result                          |
-| ------------------------- | ---------------------------------------- |
-| Fresh install             | Trial active                             |
-| Activate valid key        | Pro unlocked, activation count increases |
-| Deactivate Pro            | removed, activation count decreases      |
-| Expired                   | subscription Pro locked                  |
-| Offline during validation | Grace allows temporary access            |
+For a deeper technical breakdown, see `ARCHITECTURE.md`.
 
 ### Enable Performance Debug Logging
 
@@ -190,26 +148,23 @@ Performance logs for `observePrompts()` are disabled by default.
 
 To enable:
 
-1. Open the app in your browser.
-2. Open DevTools → Console.
-3. Run:
+1. Open DevTools → Console
+2. Run:
 
 ```js
 localStorage.setItem('navgpt_debug_perf', '1')
 ```
 
-4. Refresh the page
+3. Refresh the page
 
-You'll see logs like:
-`[NavGPT perf] { ... }`
+You'll see logs like: `[NavGPT perf] { ... }`
 
 To disable:
-`localStorage.removeItem('navgpt_debug_perf')`
 
-or
+```js
+localStorage.removeItem('navgpt_debug_perf')
+```
 
-`localStorage.setItem('navgpt_debug_perf', '0')`
+## License
 
-## 📜 License
-
-Proprietary — NavGPT © 2026
+MIT — see [LICENSE](./LICENSE)
