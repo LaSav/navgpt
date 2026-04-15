@@ -432,6 +432,7 @@ export default function Sidebar({
                 href='https://github.com/lasav/navgpt'
                 target='_blank'
                 rel='noreferrer'
+                class='footer--meta'
               >
                 View on GitHub
               </a>
