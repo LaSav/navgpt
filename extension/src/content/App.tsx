@@ -59,7 +59,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
         setToast({
           title: 'ChatGPT branching has changed',
           message:
-            "OpenAI recently removed parts of the conversation branching/edit history behavior NavGPT relied on. Some branch-navigation features may now work differently or become limited.\n\nNavGPT still supports:\n• prompt history\n• jump navigation\n• instant copy & edit\n• pinned prompts\n• markdown export\n\nI'm actively adapting the extension, feedback is extremely helpful.",
+            "OpenAI recently removed parts of the conversation branching/edit history behavior NavGPT relied on. Some branch-navigation features may now work differently or become limited.\n\nNavGPT still supports:\n• prompt history\n• jump navigation\n• instant copy & edit\n• bookmarked prompts\n• markdown export\n\nI'm actively adapting the extension, feedback is extremely helpful.",
           actionLabel: 'Share feedback',
           onAction: () => window.open('https://navgpt.app/contact', '_blank'),
           duration: 0,

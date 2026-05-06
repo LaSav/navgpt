@@ -458,7 +458,7 @@ export default function Sidebar({
                   <li>prompt history</li>
                   <li>jump navigation</li>
                   <li>instant copy & edit</li>
-                  <li>pinned prompts</li>
+                  <li>bookmarked prompts</li>
                   <li>markdown export</li>
                 </ul>
                 <p class='changelog-entry__message'>
