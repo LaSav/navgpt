@@ -15,7 +15,7 @@ Built with:
 - Jump directly to a prompt in the thread
 - Copy prompt text
 - Re-open prompts for editing
-- Pin prompts per conversation
+- Bookmark prompts per conversation
 - Prompt version / branch navigation
 - Export conversation to Markdown
 
@@ -35,7 +35,7 @@ From that sidebar, users can:
 - jump to prompts
 - edit existing prompts
 - copy prompt text
-- pin prompts
+- Bookmark prompts
 - navigate versions where available
 
 Because ChatGPT does not expose a stable public API for this kind of integration, NavGPT uses a defensive DOM-driven approach.

@@ -19,11 +19,16 @@ import {
   loadState,
   togglePinned,
 } from '../storage/promptMeta'
+import { isDismissed, markDismissed } from '../storage/changelog'
+
+const ANNOUNCEMENT_ID = 'openai-branch-changes-2026'
 
 type ToastState = {
+  title?: string
   message: string
   actionLabel?: string
   onAction?: () => void
+  duration?: number
 } | null
 
 type SidebarPromptItem = PromptItem & {
@@ -47,6 +52,21 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const [isOpen, setIsOpen] = useState(true)
   const [shouldShow, setShouldShow] = useState(() => shouldShowSidebar())
   const [toast, setToast] = useState<ToastState>(null)
+
+  useEffect(() => {
+    isDismissed(ANNOUNCEMENT_ID).then((dismissed) => {
+      if (!dismissed) {
+        setToast({
+          title: 'ChatGPT branching has changed',
+          message:
+            "OpenAI recently removed parts of the conversation branching/edit history behavior NavGPT relied on. Some branch-navigation features may now work differently or become limited.\n\nNavGPT still supports:\n• prompt history\n• jump navigation\n• instant copy & edit\n• pinned prompts\n• markdown export\n\nI'm actively adapting the extension, feedback is extremely helpful.",
+          actionLabel: 'Share feedback',
+          onAction: () => window.open('https://navgpt.app/contact', '_blank'),
+          duration: 0,
+        })
+      }
+    })
+  }, [])
   const [pageEpoch, setPageEpoch] = useState(0)
   const [chatTitle, setChatTitle] = useState<string>(extractChatTitle)
 
@@ -406,7 +426,10 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
       onPreviousVersion={onPreviousVersion}
       onNextVersion={onNextVersion}
       toast={toast}
-      onDismissToast={() => setToast(null)}
+      onDismissToast={() => {
+        markDismissed(ANNOUNCEMENT_ID)
+        setToast(null)
+      }}
     />
   ) : null
 }

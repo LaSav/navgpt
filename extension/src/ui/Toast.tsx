@@ -1,6 +1,7 @@
 import { useEffect } from 'preact/hooks'
 
 type ToastProps = {
+  title?: string
   message: string
   actionLabel?: string
   onAction?: () => void
@@ -9,6 +10,7 @@ type ToastProps = {
 }
 
 export function Toast({
+  title,
   message,
   actionLabel,
   onAction,
@@ -16,12 +18,14 @@ export function Toast({
   duration = 5000,
 }: ToastProps) {
   useEffect(() => {
+    if (!duration) return
     const t = setTimeout(onClose, duration)
     return () => clearTimeout(t)
   }, [duration, onClose])
 
   return (
     <div class='toast'>
+      {title && <div class='toast__title'>{title}</div>}
       <div class='toast__message'>{message}</div>
 
       <div class='toast__controls'>
@@ -38,7 +42,7 @@ export function Toast({
         )}
 
         <button class='toast__close' onClick={onClose} aria-label='Dismiss'>
-          dismiss
+          Dismiss
         </button>
       </div>
     </div>

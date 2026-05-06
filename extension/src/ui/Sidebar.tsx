@@ -36,9 +36,11 @@ type Props = {
   onNextPrompt: () => void
   onPreviousPrompt: () => void
   toast?: {
+    title?: string
     message: string
     actionLabel?: string
     onAction?: () => void
+    duration?: number
   } | null
   onDismissToast?: () => void
   onExport: () => void
@@ -437,16 +439,53 @@ export default function Sidebar({
                 View on GitHub
               </a>
             </div>
+
+            <div class='changelog-section'>
+              <p class='changelog-section__title'>Changelog</p>
+              <div class='changelog-entry'>
+                <span class='changelog-entry__date'>May 2026</span>
+                <p class='changelog-entry__heading'>
+                  ChatGPT branching has changed
+                </p>
+                <p class='changelog-entry__message'>
+                  OpenAI recently removed parts of the conversation
+                  branching/edit history behavior NavGPT relied on. Some
+                  branch-navigation features may now work differently or become
+                  limited.
+                </p>
+                <p class='changelog-entry__message'>NavGPT still supports:</p>
+                <ul class='changelog-entry__list'>
+                  <li>prompt history</li>
+                  <li>jump navigation</li>
+                  <li>instant copy & edit</li>
+                  <li>pinned prompts</li>
+                  <li>markdown export</li>
+                </ul>
+                <p class='changelog-entry__message'>
+                  I'm actively adapting the extension, feedback is extremely
+                  helpful.{' '}
+                  <a
+                    href='https://navgpt.app/contact'
+                    target='_blank'
+                    rel='noreferrer'
+                  >
+                    Share feedback.
+                  </a>
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
         <div class='toast-overlay' aria-live='polite'>
           {toast && onDismissToast && (
             <Toast
+              title={toast.title}
               message={toast.message}
               actionLabel={toast.actionLabel}
               onAction={toast.onAction}
               onClose={onDismissToast}
+              duration={toast.duration}
             />
           )}
         </div>

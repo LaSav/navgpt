@@ -602,6 +602,73 @@ TOOLTIP
 }
 
 /* ----------------------------------------
+   CHANGELOG
+---------------------------------------- */
+.changelog-section {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.changelog-section__title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  margin: 0;
+}
+
+.changelog-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.changelog-entry__date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.changelog-entry__heading {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.changelog-entry__message {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.85;
+}
+
+.changelog-entry__list {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+  padding-left: 1.25rem;
+  opacity: 0.85;
+}
+
+.changelog-entry__message a,
+.changelog-entry__list a {
+  color: var(--accent, #6b5cff);
+  text-decoration: none;
+}
+
+.changelog-entry__message a:hover,
+.changelog-entry__list a:hover {
+  text-decoration: underline;
+}
+
+/* ----------------------------------------
    PRO PANEL
 ---------------------------------------- */
 .pro-panel {
@@ -883,10 +950,17 @@ TOOLTIP
   flex-shrink: 0;
 }
 
+.toast__title {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.95;
+}
+
 .toast__message {
   font-size: 12px;
-  line-height: 1.35;
-  opacity: 0.95;
+  line-height: 1.5;
+  opacity: 0.85;
+  white-space: pre-line;
 }
 
 .toast__controls {
