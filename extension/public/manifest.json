@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "name": "NavGPT - Prompt & Edit History",
   "short_name": "NavGPT",
   "description": "Sidebar for ChatGPT: jump to any prompt, browse history, copy, bookmark, edit, export and navigate versions - all without scrolling.",
