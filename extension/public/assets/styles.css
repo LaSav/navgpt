@@ -5,7 +5,7 @@
   all: initial;
   --text-sm: 0.875rem;
 
-  --bg-primary: #f9f9f9;
+  --bg-primary: #ffffff;
   --text-primary: #0d0d0d;
 
   --bg-secondary: #f4f4f5;
@@ -31,7 +31,7 @@
 :host([data-theme='dark']) {
   --text-sm: 0.875rem;
 
-  --bg-primary: #181818;
+  --bg-primary: #000000;
   --text-primary: #fff;
 
   --bg-secondary: #ffffff1a;
@@ -40,7 +40,7 @@
   --border-color: #ffffff0d;
   --divider-color: color-mix(in oklab, var(--text-primary) 16%, transparent);
   --hover-bg: #ffffff1a;
-  --active-bg: #ffffff0d;
+  --active-bg: #2f2f2f;
   --editing-bg: color-mix(in oklab, var(--text-primary) 8%, transparent);
 
   --shadow-rgb: 0, 0, 0;
@@ -54,7 +54,7 @@
 :host-context([data-theme='dark']) {
   --text-sm: 0.875rem;
 
-  --bg-primary: #181818;
+  --bg-primary: #000000;
   --text-primary: #fff;
   --bg-secondary: #ffffff1a;
   --text-secondary: #afafaf;
