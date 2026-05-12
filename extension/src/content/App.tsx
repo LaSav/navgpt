@@ -131,6 +131,11 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     setActiveId(id)
     scrollSidebarActiveIntoView(shadowMount, id)
 
+    const article = (el.closest(SEL.userTurn) as HTMLElement | null) ?? el
+    if (article.isConnected) {
+      scrollerRef.current = getScrollParent(article)
+    }
+
     const doSnap = () => {
       if (!el.isConnected) return
       snapToPrompt(el, scrollerRef.current)
@@ -158,6 +163,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   }
 
   const onJumpToResponse = (promptId: string, responseEl: HTMLElement) => {
+    if (responseEl.isConnected) scrollerRef.current = getScrollParent(responseEl)
     snapToElement(responseEl, { scroller: scrollerRef.current })
     setActiveId(promptId)
     scrollSidebarActiveIntoView(shadowMount, promptId)

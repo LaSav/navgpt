@@ -8,9 +8,39 @@ export function getScrollParent(node: HTMLElement): HTMLElement {
     p = p.parentElement
   ) {
     const s = getComputedStyle(p)
-    if (/(auto|scroll)/.test(s.overflow + s.overflowY + s.overflowX)) return p
+    if (
+      /(auto|scroll)/.test(s.overflow + s.overflowY + s.overflowX) &&
+      p.scrollHeight > p.clientHeight
+    )
+      return p
   }
-  return (document.scrollingElement as HTMLElement) || document.documentElement
+  // SEL.main is a stable ChatGPT anchor that is usually the true scroll container
+  const main = document.querySelector<HTMLElement>(SEL.main)
+  if (main && main.scrollHeight > main.clientHeight) return main
+  return (document.scrollingElement as HTMLElement) ?? document.documentElement
+}
+
+export function debugScrollParent(node: HTMLElement): void {
+  const rows: object[] = []
+  for (
+    let p = node.parentElement;
+    p && p !== document.documentElement;
+    p = p.parentElement
+  ) {
+    const s = getComputedStyle(p)
+    rows.push({
+      tag: p.tagName,
+      id: p.id,
+      cls: p.className.slice(0, 50),
+      overflow: `${s.overflow}/${s.overflowY}/${s.overflowX}`,
+      scrollable: p.scrollHeight > p.clientHeight,
+      matches_regex: /(auto|scroll)/.test(
+        s.overflow + s.overflowY + s.overflowX,
+      ),
+    })
+  }
+  console.table(rows)
+  console.log('[NavGPT] getScrollParent result:', getScrollParent(node))
 }
 
 /**
