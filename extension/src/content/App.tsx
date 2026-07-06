@@ -245,7 +245,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     [items],
   )
 
-  const changeVersion = async (id: string, direction: -1 | 1) => {
+  const onOpenVersions = (id: string) => {
     const item = visibleItems.find((i) => i.id === id)
     if (!item) return
 
@@ -254,9 +254,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
 
     focusPromptInUi(id, article)
 
-    const selector =
-      direction === -1 ? SEL.prevResponseButton : SEL.nextResponseButton
-    const btn = article.querySelector<HTMLButtonElement>(selector)
+    const btn = article.querySelector<HTMLButtonElement>(SEL.versionsButton)
     if (!btn) return
 
     const ariaDisabled = btn.getAttribute('aria-disabled')
@@ -264,9 +262,6 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
 
     btn.click()
   }
-
-  const onPreviousVersion = (id: string) => changeVersion(id, -1)
-  const onNextVersion = (id: string) => changeVersion(id, 1)
 
   const goToPromptByOffset = (direction: 1 | -1) => {
     if (!visibleItems.length) return
@@ -429,8 +424,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
       onEdit={onEdit}
       onCopy={onCopy}
       onTogglePin={onTogglePin}
-      onPreviousVersion={onPreviousVersion}
-      onNextVersion={onNextVersion}
+      onOpenVersions={onOpenVersions}
       toast={toast}
       onDismissToast={() => {
         markDismissed(ANNOUNCEMENT_ID)

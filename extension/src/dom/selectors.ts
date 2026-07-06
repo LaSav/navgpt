@@ -42,11 +42,11 @@ export const SEL = {
   editMessageButtonExact: 'button[aria-label="Edit message"]',
   editMessageButtonPrefix: 'button[aria-label^="Edit"]',
 
-  /** Response version navigation in a turn */
-  prevResponseButton: 'button[aria-label="Previous response"]',
-  nextResponseButton: 'button[aria-label="Next response"]',
+  /** Opens the "See versions" modal for a turn's edit history */
+  versionsButton:
+    'button[aria-label="See versions"], [data-testid="variants-turn-action-button"]',
 
-  /** Revision counter inside a turn (e.g., "1 / 2") */
+  /** Revision counter inside a turn (total version count) */
   revisionCounter: '.tabular-nums, [class*="tabular-nums"]',
 
   /** Misc UI heuristics used in main() to pick a chat root container */

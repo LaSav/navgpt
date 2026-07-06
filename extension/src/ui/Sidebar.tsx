@@ -6,8 +6,6 @@ import { ArrowDown } from './icons/ArrowDown'
 import { Tooltip } from './Tooltip'
 import { Edit } from './icons/Edit'
 import { Copy } from './icons/Copy'
-import { ArrowLeft } from './icons/ArrowLeft'
-import { ArrowRight } from './icons/ArrowRight'
 import { Settings } from './icons/Settings'
 import { Back } from './icons/Back'
 import { Collapse } from './icons/Collapse'
@@ -16,6 +14,7 @@ import { BookmarkFilled } from './icons/BookmarkFilled'
 import { Toast } from './Toast'
 import { ResponseArrow } from './icons/ResponseArrow'
 import { Export } from './icons/Export'
+import { Versions } from './icons/Versions'
 
 type SidebarPromptItem = PromptItem & {
   pinned: boolean
@@ -28,8 +27,7 @@ type Props = {
   onEdit: (id: string) => void
   onCopy: (id: string) => void
   onTogglePin: (id: string) => void
-  onPreviousVersion: (id: string) => void
-  onNextVersion: (id: string) => void
+  onOpenVersions: (id: string) => void
   activeId?: string
   isOpen: boolean
   onToggle: () => void
@@ -56,8 +54,7 @@ export default function Sidebar({
   onEdit,
   onCopy,
   onTogglePin,
-  onPreviousVersion,
-  onNextVersion,
+  onOpenVersions,
   activeId,
   isOpen,
   onToggle,
@@ -278,8 +275,6 @@ export default function Sidebar({
         {view === 'history' ? (
           <div class='list'>
             {items.map((p) => {
-              const canPrevVersion = p.currentVersion > 1
-              const canNextVersion = p.currentVersion < p.totalVersions
               const canPin = !!p.conversationId && !!p.turnId
               const responseEl = p.responseEl
               const canJumpToResponse = p.hasResponse && !!responseEl
@@ -318,40 +313,21 @@ export default function Sidebar({
                     <div class='item-meta__center'>
                       {p.edits > 0 && (
                         <div class='edits-controls'>
-                          <span class='badge badge--edits'>
+                          <Tooltip label='See versions' placement='bottom'>
                             <button
                               type='button'
-                              class='badge__button'
+                              class='badge__button badge--versions badge__btn--iconlabel'
                               onClick={(e) => {
                                 e.stopPropagation()
-                                onPreviousVersion(p.id)
+                                onOpenVersions(p.id)
                               }}
-                              disabled={!canPrevVersion}
-                              aria-label='Previous edit version'
+                              aria-label='See versions'
+                              title={`${p.totalVersions} versions`}
                             >
-                              <ArrowLeft />
+                              <span class='badge-text'>{p.totalVersions}</span>
+                              <Versions size={13} />
                             </button>
-
-                            <span
-                              class='badge-text'
-                              title={`${p.totalVersions} edits`}
-                            >
-                              {p.currentVersion} / {p.totalVersions}
-                            </span>
-
-                            <button
-                              type='button'
-                              class='badge__button'
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onNextVersion(p.id)
-                              }}
-                              disabled={!canNextVersion}
-                              aria-label='Next edit version'
-                            >
-                              <ArrowRight />
-                            </button>
-                          </span>
+                          </Tooltip>
                         </div>
                       )}
                     </div>

@@ -466,13 +466,6 @@
   color: var(--text-primary);
 }
 
-.badge--edits {
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
 .badge--editing {
   background: var(--badge-editing-bg);
 }
@@ -520,6 +513,19 @@
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
+}
+
+.badge--versions {
+  width: auto;
+  min-width: 25px;
+  padding: 0 0.4rem;
+}
+
+.badge--versions .badge-text {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ----------------------------------------

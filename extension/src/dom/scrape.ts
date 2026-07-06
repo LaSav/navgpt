@@ -10,7 +10,6 @@ export type PromptItem = {
   el: HTMLElement
   edits: number
   totalVersions: number
-  currentVersion: number
 
   conversationId?: string
   turnId?: string
@@ -25,26 +24,19 @@ function summarize(text: string, max = 2000): string {
 }
 
 function parseRevisionInfo(article: HTMLElement | null) {
-  let current = 1
   let total = 1
 
   if (article) {
-    const counter = article.querySelector<HTMLElement>(SEL.revisionCounter)
-    const txt = counter?.textContent?.trim() ?? ''
-    const m = txt.match(/(\d+)\s*\/\s*(\d+)/)
-
-    if (m) {
-      current = parseInt(m[1], 10)
-      total = parseInt(m[2], 10)
-    } else {
-      const hasPrev = !!article.querySelector(SEL.prevResponseButton)
-      const hasNext = !!article.querySelector(SEL.nextResponseButton)
-      if (hasPrev || hasNext) total = 2
-    }
+    const versionsBtn = article.querySelector<HTMLElement>(SEL.versionsButton)
+    const txt =
+      versionsBtn
+        ?.querySelector<HTMLElement>(SEL.revisionCounter)
+        ?.textContent?.trim() ?? ''
+    const n = parseInt(txt, 10)
+    if (Number.isFinite(n) && n > 0) total = n
   }
 
   return {
-    currentVersion: current,
     totalVersions: total,
     edits: Math.max(0, total - 1),
   }
@@ -134,7 +126,7 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       article.dataset.promptId = id
     }
 
-    const { currentVersion, totalVersions, edits } = parseRevisionInfo(article)
+    const { totalVersions, edits } = parseRevisionInfo(article)
 
     let nextAssistantTurn: HTMLElement | null = null
 
@@ -159,7 +151,6 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
       el: scrollTarget,
       edits,
       totalVersions,
-      currentVersion,
       conversationId,
       turnId,
       hasResponse: !!nextAssistantTurn,
@@ -300,7 +291,6 @@ export function observePrompts(
         return [
           i.turnId || i.id,
           i.edits,
-          i.currentVersion,
           i.totalVersions,
           i.hasResponse ? 1 : 0,
           t.length,
