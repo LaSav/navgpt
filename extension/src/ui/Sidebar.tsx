@@ -440,6 +440,18 @@ export default function Sidebar({
             <div class='changelog-section'>
               <p class='changelog-section__title'>Changelog</p>
               <div class='changelog-entry'>
+                <span class='changelog-entry__date'>July 2026</span>
+                <p class='changelog-entry__heading'>Fixed blank prompt text</p>
+                <p class='changelog-entry__message'>
+                  A ChatGPT update meant prompts stayed blank in the sidebar
+                  until you manually scrolled to them, and could export as
+                  empty. Prompts now show a "Not loaded yet" hint until
+                  visited, and a new reload button in the chat title row lets
+                  you load every prompt's text in one click. Export also
+                  loads everything automatically before generating the file.
+                </p>
+              </div>
+              <div class='changelog-entry'>
                 <span class='changelog-entry__date'>May 2026</span>
                 <p class='changelog-entry__heading'>
                   ChatGPT branching has changed
