@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import Sidebar from '../ui/Sidebar'
-import { observePrompts, scrapePrompts, type PromptItem } from '../dom/scrape'
+import {
+  getActiveThreadTurns,
+  getAssistantTurnText,
+  getThreadRoot,
+  observePrompts,
+  scrapePrompts,
+  type PromptItem,
+} from '../dom/scrape'
+import { hydrateThread } from '../dom/hydrate'
 import { shouldShowSidebar } from '../dom/page'
 import { SEL } from '../dom/selectors'
 import { installNavigationWatcher } from '../dom/navigationWatcher'
@@ -35,11 +43,6 @@ type SidebarPromptItem = PromptItem & {
   pinned: boolean
 }
 
-function extractResponseText(el: HTMLElement): string {
-  const prose = el.querySelector<HTMLElement>('.prose')
-  return (prose ?? el).innerText.trim()
-}
-
 function extractChatTitle(): string {
   const stripped = document.title.replace(/\s*[-|]\s*ChatGPT\s*$/i, '').trim()
   return /^chatgpt$/i.test(stripped) ? '' : stripped
@@ -52,6 +55,7 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const [isOpen, setIsOpen] = useState(true)
   const [shouldShow, setShouldShow] = useState(() => shouldShowSidebar())
   const [toast, setToast] = useState<ToastState>(null)
+  const [isHydrating, setIsHydrating] = useState(false)
 
   useEffect(() => {
     isDismissed(ANNOUNCEMENT_ID).then((dismissed) => {
@@ -286,7 +290,39 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
   const handlePreviousPrompt = () => goToPromptByOffset(-1)
   const handleToggle = () => setIsOpen((prev) => !prev)
 
-  const handleExport = () => {
+  const onHydrateAll = async () => {
+    if (isHydrating) return
+
+    const scrapeRoot = getThreadRoot()
+    if (!scrapeRoot) return
+
+    setIsHydrating(true)
+    try {
+      const turns = getActiveThreadTurns(scrapeRoot)
+      const scrollEl = scrollerRef.current ?? getScrollParent(scrapeRoot)
+      await hydrateThread(turns, scrollEl, scrapeRoot)
+    } finally {
+      setIsHydrating(false)
+    }
+  }
+
+  const handleExport = async () => {
+    const scrapeRoot = getThreadRoot()
+
+    let hydratedText: Map<string, string> | null = null
+    if (scrapeRoot) {
+      const turns = getActiveThreadTurns(scrapeRoot)
+      const scrollEl = scrollerRef.current ?? getScrollParent(scrapeRoot)
+      setIsHydrating(true)
+      try {
+        hydratedText = await hydrateThread(turns, scrollEl, scrapeRoot)
+      } finally {
+        setIsHydrating(false)
+      }
+    }
+
+    const exportItems = scrapeRoot ? scrapePrompts(scrapeRoot) : visibleItems
+
     const lines: string[] = []
 
     const pageTitle = extractChatTitle()
@@ -301,14 +337,22 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     lines.push('---')
     lines.push('')
 
-    for (const item of visibleItems) {
+    for (const item of exportItems) {
+      const userText = (
+        (item.turnId && hydratedText?.get(item.turnId)) ||
+        item.rawText
+      ).trim()
+
       lines.push('**User**')
       lines.push('')
-      lines.push(item.rawText.trim())
+      lines.push(userText)
       lines.push('')
 
       if (item.hasResponse && item.responseEl) {
-        const responseText = extractResponseText(item.responseEl)
+        const responseTurnId = item.responseEl.getAttribute('data-turn-id')
+        const responseText =
+          (responseTurnId && hydratedText?.get(responseTurnId)) ||
+          getAssistantTurnText(item.responseEl)
         if (responseText) {
           lines.push('**Assistant**')
           lines.push('')
@@ -413,6 +457,8 @@ export function App({ shadowMount }: { shadowMount: HTMLElement }) {
     <Sidebar
       chatTitle={chatTitle}
       onExport={handleExport}
+      onHydrateAll={onHydrateAll}
+      isHydrating={isHydrating}
       items={visibleItems}
       onJump={onJump}
       onJumpToResponse={onJumpToResponse}

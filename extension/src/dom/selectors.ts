@@ -24,6 +24,31 @@ export const SEL = {
   assistantMessageBubble:
     '[data-testid="assistant-message"], [data-message-author-role="assistant"]',
 
+  /**
+   * Ordered fallback chain for the text-bearing node inside a user turn.
+   * Narrowest/most specific first; last resort falls back to the bubble/article
+   * itself in scrape.ts.
+   */
+  userTurnContent: [
+    '[data-testid="user-message"] [class*="whitespace-pre-wrap"]',
+    '[data-message-author-role="user"] [class*="whitespace-pre-wrap"]',
+    '[data-testid="user-message"] .markdown',
+    '[data-message-author-role="user"] .markdown',
+    '[data-testid="user-message"]',
+    '[data-message-author-role="user"]',
+  ],
+
+  /** Ordered fallback chain for the text-bearing node inside an assistant turn. */
+  assistantTurnContent: [
+    '[data-testid="assistant-message"] .markdown',
+    '[data-message-author-role="assistant"] .markdown',
+    '[data-testid="assistant-message"] [class*="whitespace-pre-wrap"]',
+    '[data-message-author-role="assistant"] [class*="whitespace-pre-wrap"]',
+    '[data-testid="assistant-message"]',
+    '[data-message-author-role="assistant"]',
+    '.prose',
+  ],
+
   /** Response headings */
   responseHeading: 'h2',
 

@@ -15,6 +15,7 @@ import { Toast } from './Toast'
 import { ResponseArrow } from './icons/ResponseArrow'
 import { Export } from './icons/Export'
 import { Versions } from './icons/Versions'
+import { Reload } from './icons/Reload'
 
 type SidebarPromptItem = PromptItem & {
   pinned: boolean
@@ -42,6 +43,8 @@ type Props = {
   } | null
   onDismissToast?: () => void
   onExport: () => void
+  onHydrateAll: () => void
+  isHydrating: boolean
   chatTitle?: string
 }
 
@@ -63,6 +66,8 @@ export default function Sidebar({
   toast,
   onDismissToast,
   onExport,
+  onHydrateAll,
+  isHydrating,
   chatTitle,
 }: Props) {
   const panelId = 'prompt-history-sidebar'
@@ -257,6 +262,20 @@ export default function Sidebar({
             >
               {chatTitle || 'New chat'}
             </span>
+            <Tooltip
+              label={isHydrating ? 'Loading…' : 'Load all prompt text'}
+              placement='bottom-end'
+            >
+              <button
+                type='button'
+                class={`header-iconButton ${isHydrating ? 'header-iconButton--spinning' : ''}`}
+                onClick={onHydrateAll}
+                aria-label='Load full prompt text'
+                disabled={items.length === 0 || isHydrating}
+              >
+                <Reload size={16} />
+              </button>
+            </Tooltip>
             <Tooltip label='Export chat' placement='bottom-end'>
               <button
                 type='button'
@@ -365,7 +384,9 @@ export default function Sidebar({
                   </div>
 
                   <div class='text-row'>
-                    <div class='text'>{p.text}</div>
+                    <div class={`text${p.text ? '' : ' text--pending'}`}>
+                      {p.text || 'Not loaded yet, click or scroll here to view'}
+                    </div>
                   </div>
                   <div class='item-footer'>
                     <Tooltip label='Copy prompt' placement='bottom-start'>

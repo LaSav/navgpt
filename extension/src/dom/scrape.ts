@@ -46,7 +46,7 @@ function parseRevisionInfo(article: HTMLElement | null) {
  * IMPORTANT: Only scrape inside the active chat thread.
  * If no thread exists (projects list / landing page), treat as empty.
  */
-function getThreadRoot(): HTMLElement | null {
+export function getThreadRoot(): HTMLElement | null {
   return getActiveThread(document)
 }
 
@@ -55,31 +55,64 @@ function getScrapeRoot(passedRoot: ParentNode): ParentNode | null {
   return getThreadRoot()
 }
 
-function getUserTurnContentEl(article: HTMLElement): HTMLElement {
-  return (
-    article.querySelector<HTMLElement>(
-      '[data-testid="user-message"] [class*="whitespace-pre-wrap"]',
-    ) ??
-    article.querySelector<HTMLElement>(
-      '[data-message-author-role="user"] [class*="whitespace-pre-wrap"]',
-    ) ??
-    article.querySelector<HTMLElement>(
-      '[data-testid="user-message"] .markdown',
-    ) ??
-    article.querySelector<HTMLElement>(
-      '[data-message-author-role="user"] .markdown',
-    ) ??
-    article.querySelector<HTMLElement>('[data-testid="user-message"]') ??
-    article.querySelector<HTMLElement>('[data-message-author-role="user"]') ??
-    article
-  )
+/**
+ * All turns (user + assistant) in the active thread, in document order.
+ * Used by hydration/export, which need to visit every turn rather than
+ * just the user turns `scrapePrompts` returns as `PromptItem[]`.
+ */
+export function getActiveThreadTurns(root: ParentNode = document): HTMLElement[] {
+  const scrapeRoot = getScrapeRoot(root)
+  if (!scrapeRoot) return []
+  return Array.from(scrapeRoot.querySelectorAll<HTMLElement>(SEL.turn))
+}
+
+/**
+ * Text-bearing content node inside a turn, resolved from the ordered
+ * fallback chain in `selectors.ts` for that turn's role (user/assistant).
+ * Falls back to the turn element itself if nothing in the chain matches.
+ */
+export function getTurnContentEl(article: HTMLElement): HTMLElement {
+  const turnKind = article.getAttribute('data-turn')
+  const chain =
+    turnKind === 'assistant' ? SEL.assistantTurnContent : SEL.userTurnContent
+
+  for (const sel of chain) {
+    const el = article.querySelector<HTMLElement>(sel)
+    if (el) return el
+  }
+
+  return article
+}
+
+function normalizeText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
 }
 
 function normalizeUserTurnText(text: string): string {
-  return text
-    .replace(/^\s*You said:\s*/i, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return normalizeText(text.replace(/^\s*You said:\s*/i, ''))
+}
+
+/**
+ * Raw text for a turn (user or assistant), reading live from the DOM.
+ * Used both by the main scrape loop and by hydration/export, which need
+ * the same extraction logic on-demand rather than from cached PromptItems.
+ */
+export function getTurnRawText(article: HTMLElement): string {
+  const turnKind = article.getAttribute('data-turn')
+
+  if (turnKind === 'user') {
+    const textarea = article.querySelector<HTMLTextAreaElement>(SEL.textarea)
+    if (textarea) return normalizeUserTurnText(textarea.value)
+  }
+
+  const contentEl = getTurnContentEl(article)
+  const raw = contentEl.innerText || contentEl.textContent || ''
+  return turnKind === 'assistant' ? normalizeText(raw) : normalizeUserTurnText(raw)
+}
+
+/** Assistant response text, read live from the DOM. Never persisted. */
+export function getAssistantTurnText(article: HTMLElement): string {
+  return getTurnRawText(article)
 }
 
 /**
@@ -114,7 +147,7 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
     if (textarea) {
       rawText = normalizeUserTurnText(textarea.value)
     } else {
-      const contentEl = getUserTurnContentEl(article)
+      const contentEl = getTurnContentEl(article)
       scrollTarget = contentEl
       rawText = normalizeUserTurnText(
         contentEl.innerText || contentEl.textContent || '',
@@ -168,7 +201,7 @@ export function scrapePrompts(root: ParentNode = document): PromptItem[] {
  * Hard-pause mutation-driven scrapes while the active element is a prompt editor.
  * This prevents the sidebar item text from updating live as the user types.
  */
-function isEditorFocusedIn(scope: ParentNode | null): boolean {
+export function isEditorFocusedIn(scope: ParentNode | null): boolean {
   const active = document.activeElement as HTMLElement | null
   if (!active) return false
 
